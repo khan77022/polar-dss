@@ -1,0 +1,7 @@
+{
+  "name": "POLAR DSS",
+  "description": "Antarctic Navigation Decision Support System - AI-assisted decision support for safer and fuel-aware Antarctic research-vessel navigation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
