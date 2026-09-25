@@ -72,8 +72,8 @@ export const FleetReconView: React.FC<FleetReconViewProps> = ({
       id: `own-vessel-${Date.now()}`,
       vesselName: `${vessel.name} (Own Ship)`,
       callSign: vessel.callSign,
-      flag: '🇮🇳',
-      nation: 'India (ISEA-44 Flagship)',
+      flag: '',
+      nation: 'Antarctic Scientific Fleet',
       role: 'Expedition Command Flagship & Transport',
       polarClass: vessel.polarClass,
       currentPos: vessel.currentPos,
@@ -86,9 +86,9 @@ export const FleetReconView: React.FC<FleetReconViewProps> = ({
       floeThicknessM: broadcastFloeM,
       leadCondition: broadcastIceConc < 40 ? 'Clear Open Leads' : 'Navigable Fractures',
       icebergSightings: {
-        count: 2,
-        details: 'Visual watch on A68A megaberg northern front.',
-        nearestKm: 15.2,
+        count: 1,
+        details: 'Radar contact on D28 tabular drift fragment.',
+        nearestKm: 18.5,
       },
       weather: {
         airTempC: -12.4,
@@ -99,9 +99,9 @@ export const FleetReconView: React.FC<FleetReconViewProps> = ({
         freezingSpray: 'Light',
       },
       vPirepNotes: broadcastNotes,
-      photoUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80',
+      photoUrl: '/src/assets/images/polar_vanguard_icebreaker_1790325622639.jpg',
       radarEchoStatus: 'Clear',
-      isIndian: true,
+      isIndian: false,
     };
 
     setVessels([newReport, ...vessels]);
@@ -212,17 +212,22 @@ export const FleetReconView: React.FC<FleetReconViewProps> = ({
                       : 'bg-[#0b1424] hover:bg-[#0d1a30] border-slate-800 shadow-md'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{v.flag}</span>
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-700/80 shrink-0 bg-slate-900 shadow-sm">
+                        <img
+                          src={v.photoUrl}
+                          alt={v.vesselName}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
                       <div>
                         <h4 className="text-xs font-bold text-white leading-tight flex items-center gap-1.5 font-mono">
                           <span>{v.vesselName}</span>
-                          {v.isIndian && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                              INDIAN FLEET
-                            </span>
-                          )}
+                          <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/60">
+                            {v.role.split(' ')[0]} SCOUT
+                          </span>
                         </h4>
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">
                           {v.callSign} • {v.polarClass}
@@ -288,7 +293,13 @@ export const FleetReconView: React.FC<FleetReconViewProps> = ({
             {/* Header of selected vessel */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3.5">
               <div className="flex items-center gap-3">
-                <span className="text-3xl">{selectedVessel.flag}</span>
+                {selectedVessel.flag ? (
+                  <span className="text-3xl">{selectedVessel.flag}</span>
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-cyan-950 border border-cyan-800/60 flex items-center justify-center text-cyan-300 shadow-inner">
+                    <Ship className="w-5 h-5" />
+                  </div>
+                )}
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-white font-mono">
@@ -299,7 +310,7 @@ export const FleetReconView: React.FC<FleetReconViewProps> = ({
                     </span>
                   </div>
                   <div className="text-xs text-slate-400 mt-0.5 font-mono">
-                    Position: <strong className="text-slate-200">{Math.abs(selectedVessel.currentPos.lat).toFixed(2)}°S, {Math.abs(selectedVessel.currentPos.lon).toFixed(2)}°W</strong> • {selectedVessel.distanceAheadKm} km ahead on transit line
+                    Position: <strong className="text-slate-200">{Math.abs(selectedVessel.currentPos.lat).toFixed(2)}°S, {Math.abs(selectedVessel.currentPos.lon).toFixed(2)}°{selectedVessel.currentPos.lon >= 0 ? 'E' : 'W'}</strong> • {selectedVessel.distanceAheadKm} km ahead on transit line
                   </div>
                 </div>
               </div>
@@ -415,10 +426,10 @@ export const FleetReconView: React.FC<FleetReconViewProps> = ({
             <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <div className="font-bold text-white font-mono">
-                Fleet Network Consensus: Western Bypass (Route 2) Validated
+                Fleet Network Consensus: Offshore Leads Bypass (Route 2) Validated
               </div>
               <p className="text-[11px] text-emerald-300/90 mt-0.5 leading-snug">
-                Vanguard reports from both <strong>PRV Sagar Dhruv</strong> and <strong>ORV Sagar Kanya</strong> confirm that the western approach avoids the high-concentration pack ice and growler field shed by megaberg A68A.
+                Vanguard reports from both <strong>RV Polar Vanguard</strong> and <strong>ORV Ocean Surveyor</strong> confirm that the offshore leads bypass avoids the heavy coastal pack ice and growler field shed by tabular megaberg D28.
               </p>
             </div>
           </div>

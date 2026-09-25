@@ -50,7 +50,7 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
   onResetRoute,
   onNavigateToCockpit,
 }) => {
-  const [destination, setDestination] = useState<string>('Rothera Research Base (Peninsula)');
+  const [destination, setDestination] = useState<string>('Maitri Station (Queen Maud Land)');
   const [objective, setObjective] = useState<'balanced' | 'shortest' | 'safety'>('balanced');
   const [selectedRouteId, setSelectedRouteId] = useState<string>(isRerouted ? 'route-rerouted' : 'route-original');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -143,7 +143,7 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
               Departure Waypoint
             </label>
             <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg font-medium text-slate-200 truncate font-mono">
-              {vessel.startPort.split('(')[0]} (King George Approach)
+              {vessel.startPort.split('(')[0]} (Prydz Bay Approach)
             </div>
           </div>
 
@@ -158,9 +158,9 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
               onChange={(e) => setDestination(e.target.value)}
               className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-lg font-medium text-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500 cursor-pointer shadow-inner"
             >
-              <option value="Rothera Research Base (Peninsula)">Rothera Research Base (Adelaide Island)</option>
-              <option value="Maitri Station (Queen Maud Land)">Maitri Station (Queen Maud Land, 70°S)</option>
-              <option value="Bharati Station (Larsemann Hills)">Bharati Station (Prydz Bay, 69°S)</option>
+              <option value="Maitri Station (Queen Maud Land)">Maitri Station (Schirmacher Oasis, 70°S 11°E)</option>
+              <option value="Bharati Station (Larsemann Hills)">Bharati Station (Prydz Bay, 69°S 76°E)</option>
+              <option value="Dakshin Gangotri (Historic Ice Shelf)">Dakshin Gangotri (Historic Ice Shelf)</option>
             </select>
           </div>
 
@@ -233,7 +233,7 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
               20 Sep 2026 • 18:30 UTC
             </div>
             <p className="text-xs text-slate-300 mt-1 leading-snug">
-              <strong>Window Closure Trigger:</strong> Fast northwest drift of Megaberg A68A (1.6 kts) coupled with 78% Weddell pack ice convergence will seal Bransfield Strait corridor.
+              <strong>Window Closure Trigger:</strong> Fast northwest drift of Tabular Megaberg D28 (1.4 kts) coupled with 74% fast-ice pressure ridge convergence will close the inshore transit corridor.
             </p>
           </div>
 
@@ -258,11 +258,11 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
           <div className="my-2 space-y-1 text-xs">
             <div className="flex items-center justify-between text-slate-400">
               <span>Primary Safe Exit Vector:</span>
-              <strong className="text-white font-mono">Bearing 295° (Drake Passage / Open Water)</strong>
+              <strong className="text-white font-mono">Bearing 000° (Open Ocean Leads)</strong>
             </div>
             <div className="flex items-center justify-between text-slate-400">
               <span>Forbidden Future Zone:</span>
-              <strong className="text-rose-400 font-mono">East Bransfield (Besetting risk &gt;75%)</strong>
+              <strong className="text-rose-400 font-mono">Amery Shelf Margin (Besetting risk &gt;75%)</strong>
             </div>
             <div className="flex items-center justify-between text-slate-400">
               <span>Hull Ice Pressure Margin:</span>
@@ -271,7 +271,7 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
           </div>
 
           <div className="text-[11px] text-slate-400 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-            <span>Vanguard Scout Confirm: <strong className="text-cyan-300">PRV Sagar Dhruv (Clear Leads)</strong></span>
+            <span>Vanguard Scout Confirm: <strong className="text-cyan-300">RV Polar Vanguard (Navigable Leads)</strong></span>
             <span className="text-emerald-400 font-semibold font-mono">✓ Safe Exit Guaranteed</span>
           </div>
         </div>
@@ -284,10 +284,10 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-bounce" />
             <div>
               <h3 className="text-xs font-bold text-amber-200 uppercase tracking-wide font-mono">
-                Iceberg A68A Collision Alert on Route 1
+                Iceberg D28 Collision Alert on Route 1
               </h3>
               <p className="text-xs text-amber-300/90 mt-0.5 font-medium">
-                Drift track intersects Route 1 on <strong>21 Sep • 14:00 UTC</strong> (CPA: 4.8 km). Immediate engagement of Route 2 Western Bypass recommended.
+                Drift track intersects inshore Route 1 on <strong>21 Sep • 12:00 UTC</strong> (CPA: 3.2 km). Immediate engagement of Route 2 (Offshore Leads Bypass) recommended.
               </p>
             </div>
           </div>

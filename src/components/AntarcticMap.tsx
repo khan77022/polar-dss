@@ -67,23 +67,23 @@ const BASEMAP_URLS: Record<BasemapType, { url: string; attribution: string; labe
 
 // Sector View Presets
 const SECTORS = {
-  peninsula: {
-    center: [-64.2, -61.5] as [number, number],
-    zoom: 6,
-    name: 'Antarctic Peninsula & Weddell Sea',
-    subtitle: 'Active passage corridor: King George Is. ➔ Rothera & A68A hazard',
-  },
   'indian-sector': {
-    center: [-69.8, 45.0] as [number, number],
+    center: [-68.8, 50.0] as [number, number],
     zoom: 4,
-    name: 'Indian Antarctic Sector (East Antarctica)',
-    subtitle: 'Covers Maitri (11°44\'E) & Bharati (76°11\'E) Permanent Research Bases',
+    name: 'East Antarctic Transit Sector',
+    subtitle: 'Bharati Station (76°E) ➔ Maitri Station (11°E) Coastal Corridor',
   },
   'all-antarctica': {
     center: [-72.0, 0.0] as [number, number],
     zoom: 3,
     name: 'Antarctic Continent & Southern Ocean',
     subtitle: 'Pan-Antarctic scientific observation & marginal ice zone',
+  },
+  peninsula: {
+    center: [-64.2, -61.5] as [number, number],
+    zoom: 6,
+    name: 'Antarctic Peninsula & Weddell Sea',
+    subtitle: 'West Antarctic collaborative passage corridor',
   },
 };
 
@@ -110,7 +110,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
   // User map controls
   const [basemap, setBasemap] = useState<BasemapType>('satellite');
-  const [currentSector, setCurrentSector] = useState<MapSector>('peninsula');
+  const [currentSector, setCurrentSector] = useState<MapSector>('indian-sector');
   const [showGuide, setShowGuide] = useState<boolean>(false);
   const [showLayerMenu, setShowLayerMenu] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -319,101 +319,134 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     group.clearLayers();
 
     // 1. RENDER SEA-ICE CONCENTRATION HEATMAP & ICE EDGE
-    if (layerVisibility.seaIceConcentration && currentSector === 'peninsula') {
+    if (layerVisibility.seaIceConcentration) {
       // Step offset creates dynamic evolution for +0h to +48h
       const stepOffset = timelineStep * 0.12;
 
-      // High concentration pack ice zone in Weddell Sea (>65%)
-      const weddellIcePolygon: [number, number][] = [
-        [-61.8 - stepOffset, -55.8],
-        [-62.8 - stepOffset, -53.8],
-        [-66.0, -52.8],
-        [-68.5, -55.8],
-        [-67.8, -60.8],
-        [-65.5, -60.0],
-        [-63.6, -57.2],
-      ];
-      L.polygon(weddellIcePolygon, {
-        color: '#dc2626',
-        weight: 1.5,
-        fillColor: '#bae6fd',
-        fillOpacity: 0.45,
-        dashArray: '3, 3',
-      })
-        .bindTooltip('<strong>Heavy Pack Ice (>65% Conc.)</strong><br/>Multi-year floes; unnavigable without icebreaker escort.', { sticky: true })
-        .addTo(group);
-
-      // Marginal Ice Zone (MIZ) in Bransfield Strait (30% - 60%)
-      const bransfieldMizPolygon: [number, number][] = [
-        [-62.1 - stepOffset * 0.5, -60.8],
-        [-62.3, -58.0],
-        [-63.3, -56.8],
-        [-64.0, -59.5],
-        [-63.3, -62.2],
-      ];
-      L.polygon(bransfieldMizPolygon, {
-        color: '#0284c7',
-        weight: 1.2,
-        fillColor: '#7dd3fc',
-        fillOpacity: 0.32,
-      })
-        .bindTooltip('<strong>Marginal Ice Zone (30% - 60% Conc.)</strong><br/>First-year fractured pack; navigable leads scouted by vanguard vessels.', { sticky: true })
-        .addTo(group);
-
-      // Low Concentration Navigable Leads (10% - 30%)
-      const openLeadsPolygon: [number, number][] = [
-        [-62.8, -62.5],
-        [-63.5, -63.5],
-        [-64.8, -64.8],
-        [-64.3, -62.8],
-        [-63.2, -61.5],
-      ];
-      L.polygon(openLeadsPolygon, {
-        color: '#10b981',
-        weight: 1,
-        fillColor: '#a7f3d0',
-        fillOpacity: 0.25,
-      })
-        .bindTooltip('<strong>Open Water & Navigable Leads (10% - 30%)</strong><br/>Route 2 Western Corridor; optimal for fuel efficiency.', { sticky: true })
-        .addTo(group);
-
-      // Sea Ice Grid Cells (Simulated Sentinel-1 / AMSR2 Raster Cells)
-      const gridSamples: { lat: number; lon: number; conc: number; status: string }[] = [
-        { lat: -62.5, lon: -58.5, conc: 68, status: 'High' },
-        { lat: -63.0, lon: -59.2, conc: 54, status: 'Medium' },
-        { lat: -63.2, lon: -61.2, conc: 22, status: 'Low' },
-        { lat: -64.0, lon: -62.5, conc: 18, status: 'Low' },
-        { lat: -64.5, lon: -57.5, conc: 82, status: 'Critical Pack' },
-      ];
-
-      gridSamples.forEach((cell) => {
-        const cellSize = 0.3;
-        const bounds: [[number, number], [number, number]] = [
-          [cell.lat - cellSize / 2, cell.lon - cellSize / 2],
-          [cell.lat + cellSize / 2, cell.lon + cellSize / 2],
+      if (currentSector === 'indian-sector' || currentSector === 'all-antarctica') {
+        // High concentration pack ice along East Antarctic shelf (>65%)
+        const eastAntarcticPack: [number, number][] = [
+          [-68.5 - stepOffset * 0.4, 76.5],
+          [-68.2 - stepOffset * 0.5, 71.0],
+          [-67.6, 56.0],
+          [-68.2, 36.0],
+          [-69.5, 12.0],
+          [-71.0, 11.5],
+          [-70.5, 45.0],
+          [-70.2, 76.5],
         ];
-        const cellColor = cell.conc > 65 ? '#ef4444' : cell.conc > 35 ? '#0284c7' : '#10b981';
-        L.rectangle(bounds, {
-          color: cellColor,
-          weight: 0.8,
-          fillColor: cellColor,
-          fillOpacity: 0.18,
-          dashArray: '2, 2',
+        L.polygon(eastAntarcticPack, {
+          color: '#dc2626',
+          weight: 1.5,
+          fillColor: '#bae6fd',
+          fillOpacity: 0.42,
+          dashArray: '3, 3',
         })
-          .bindTooltip(`SAR Grid Cell: <strong>${cell.conc}% Concentration</strong> (${cell.status})`, { sticky: true })
+          .bindTooltip('<strong>Heavy Coastal Pack Ice (>65% Conc.)</strong><br/>Amery Ice Shelf outflow & fast ice; high drag resistance.', { sticky: true })
           .addTo(group);
-      });
+
+        // Marginal Ice Zone (MIZ) in East Antarctica (30% - 60%)
+        const eastAntarcticMiz: [number, number][] = [
+          [-67.2 - stepOffset * 0.4, 76.0],
+          [-67.0, 71.0],
+          [-66.4, 55.0],
+          [-67.1, 35.0],
+          [-68.4, 12.0],
+          [-69.5, 12.0],
+          [-68.2, 36.0],
+          [-67.6, 56.0],
+          [-68.2, 71.0],
+          [-68.5, 76.5],
+        ];
+        L.polygon(eastAntarcticMiz, {
+          color: '#0284c7',
+          weight: 1.2,
+          fillColor: '#7dd3fc',
+          fillOpacity: 0.32,
+        })
+          .bindTooltip('<strong>Marginal Ice Zone (30% - 60% Conc.)</strong><br/>Fractured floes with navigable leads scouted by vanguard vessels.', { sticky: true })
+          .addTo(group);
+
+        // Low Concentration Navigable Leads (10% - 30%)
+        const eastAntarcticLeads: [number, number][] = [
+          [-66.2, 76.0],
+          [-66.4, 71.0],
+          [-65.8, 55.0],
+          [-66.3, 35.0],
+          [-67.8, 12.0],
+          [-68.4, 12.0],
+          [-67.1, 35.0],
+          [-66.4, 55.0],
+          [-67.0, 71.0],
+          [-67.2, 76.0],
+        ];
+        L.polygon(eastAntarcticLeads, {
+          color: '#10b981',
+          weight: 1,
+          fillColor: '#a7f3d0',
+          fillOpacity: 0.25,
+        })
+          .bindTooltip('<strong>Open Water & Navigable Leads (10% - 30%)</strong><br/>Route 2 Offshore Leads Bypass; optimal for fuel efficiency.', { sticky: true })
+          .addTo(group);
+      } else {
+        // High concentration pack ice zone in Weddell Sea (>65%)
+        const weddellIcePolygon: [number, number][] = [
+          [-61.8 - stepOffset, -55.8],
+          [-62.8 - stepOffset, -53.8],
+          [-66.0, -52.8],
+          [-68.5, -55.8],
+          [-67.8, -60.8],
+          [-65.5, -60.0],
+          [-63.6, -57.2],
+        ];
+        L.polygon(weddellIcePolygon, {
+          color: '#dc2626',
+          weight: 1.5,
+          fillColor: '#bae6fd',
+          fillOpacity: 0.45,
+          dashArray: '3, 3',
+        })
+          .bindTooltip('<strong>Heavy Pack Ice (>65% Conc.)</strong><br/>Multi-year floes; unnavigable without icebreaker escort.', { sticky: true })
+          .addTo(group);
+
+        // Marginal Ice Zone (MIZ) in Bransfield Strait (30% - 60%)
+        const bransfieldMizPolygon: [number, number][] = [
+          [-62.1 - stepOffset * 0.5, -60.8],
+          [-62.3, -58.0],
+          [-63.3, -56.8],
+          [-64.0, -59.5],
+          [-63.3, -62.2],
+        ];
+        L.polygon(bransfieldMizPolygon, {
+          color: '#0284c7',
+          weight: 1.2,
+          fillColor: '#7dd3fc',
+          fillOpacity: 0.32,
+        })
+          .bindTooltip('<strong>Marginal Ice Zone (30% - 60% Conc.)</strong><br/>First-year fractured pack; navigable leads scouted by vanguard vessels.', { sticky: true })
+          .addTo(group);
+      }
     }
 
     // 2. RENDER ICE EDGE BOUNDARY
-    if (layerVisibility.iceEdge && currentSector === 'peninsula') {
-      const iceEdgeCoords: [number, number][] = [
-        [-61.5, -63.0],
-        [-62.0, -60.5],
-        [-62.4, -58.2],
-        [-63.0, -56.0],
-        [-64.5, -54.0],
-      ];
+    if (layerVisibility.iceEdge) {
+      const isIndianSector = currentSector === 'indian-sector' || currentSector === 'all-antarctica';
+      const iceEdgeCoords: [number, number][] = isIndianSector
+        ? [
+            [-65.2, 78.0],
+            [-65.6, 68.0],
+            [-65.1, 52.0],
+            [-65.7, 36.0],
+            [-66.8, 18.0],
+            [-67.5, 10.0],
+          ]
+        : [
+            [-61.5, -63.0],
+            [-62.0, -60.5],
+            [-62.4, -58.2],
+            [-63.0, -56.0],
+            [-64.5, -54.0],
+          ];
       L.polyline(iceEdgeCoords, {
         color: '#38bdf8',
         weight: 2.5,
@@ -425,14 +458,21 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     }
 
     // 3. RENDER FORBIDDEN FUTURE ZONES & RISK HEATMAP
-    if (layerVisibility.forbiddenZones && currentSector === 'peninsula') {
-      // Dynamic entrapment risk zone (closing channel east of Low Island)
-      const trapZone: [number, number][] = [
-        [-62.8, -59.8],
-        [-63.4, -58.9],
-        [-63.9, -60.2],
-        [-63.2, -60.9],
-      ];
+    if (layerVisibility.forbiddenZones) {
+      const isIndianSector = currentSector === 'indian-sector' || currentSector === 'all-antarctica';
+      const trapZone: [number, number][] = isIndianSector
+        ? [
+            [-67.5, 71.2],
+            [-68.1, 71.8],
+            [-68.4, 69.5],
+            [-67.7, 69.0],
+          ]
+        : [
+            [-62.8, -59.8],
+            [-63.4, -58.9],
+            [-63.9, -60.2],
+            [-63.2, -60.9],
+          ];
       L.polygon(trapZone, {
         color: '#b91c1c',
         weight: 2,
@@ -440,24 +480,29 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
         fillOpacity: 0.4,
         dashArray: '4, 4',
       })
-        .bindTooltip('<strong>🚫 FORBIDDEN FUTURE ZONE (+24h to +48h)</strong><br/>Convergence of A68A megaberg pressure ridge with 75% pack ice.<br/><em>High risk of vessel entrapment / besetting.</em>', { sticky: true })
+        .bindTooltip('<strong>🚫 FORBIDDEN FUTURE ZONE (+24h to +48h)</strong><br/>Convergence of Megaberg pressure ridge with 75% pack ice.<br/><em>High risk of vessel entrapment / besetting.</em>', { sticky: true })
         .addTo(group);
     }
 
     // 4. RENDER FUTURE ACCESSIBILITY & ESCAPEABILITY VECTORS
-    if (layerVisibility.escapeability && currentSector === 'peninsula') {
-      // Escape Vector Arrow towards Drake Passage
-      const escapePoints: [number, number][] = [
-        [-63.2, -61.5],
-        [-62.2, -63.8],
-      ];
+    if (layerVisibility.escapeability) {
+      const isIndianSector = currentSector === 'indian-sector' || currentSector === 'all-antarctica';
+      const escapePoints: [number, number][] = isIndianSector
+        ? [
+            [-67.6, 70.2],
+            [-65.8, 70.2],
+          ]
+        : [
+            [-63.2, -61.5],
+            [-62.2, -63.8],
+          ];
       L.polyline(escapePoints, {
         color: '#10b981',
         weight: 3,
         dashArray: '8, 8',
         opacity: 0.85,
       })
-        .bindTooltip('<strong>🟢 Safe Escape Vector (Bearing 295°)</strong><br/>Clear passage into Drake Passage / open water with 88% escapeability index.', { sticky: true })
+        .bindTooltip('<strong>🟢 Safe Escape Vector (Bearing North 000°)</strong><br/>Clear passage into open Southern Ocean with 88% escapeability index.', { sticky: true })
         .addTo(group);
     }
 
@@ -466,6 +511,10 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
       // A. Direct Route (Route 1)
       const directCoords: [number, number][] = ROUTE_ORIGINAL.waypoints.map((w) => [w.lat, w.lon]);
       const isRoute1Active = !isRerouted;
+      const isIndian = currentSector === 'indian-sector' || currentSector === 'all-antarctica';
+      const hazardName = isIndian ? 'D28 Megaberg' : 'A68A Megaberg';
+      const bypassName = isIndian ? 'Offshore Leads Bypass' : 'Western Bypass';
+
       L.polyline(directCoords, {
         color: isRoute1Active ? '#ea580c' : '#94a3b8',
         weight: isRoute1Active ? 4.5 : 2.5,
@@ -474,15 +523,15 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
       })
         .bindPopup(`
           <div style="font-family: sans-serif; font-size: 12px; color: #0f172a; line-height: 1.4;">
-            <strong style="color: #ea580c;">Route 1: Direct Passage (380 km)</strong><br/>
+            <strong style="color: #ea580c;">Route 1: Direct Passage (${ROUTE_ORIGINAL.distanceKm} km)</strong><br/>
             <span>Status: ${isRoute1Active ? 'Active' : 'Deactivated / Bypassed'}</span><br/>
-            <span>Risk: <strong>HIGH</strong> (A68A collision hazard at km 185)</span><br/>
-            <span>Time: 32h • Fuel: 1,450 L</span>
+            <span>Risk: <strong>HIGH</strong> (${hazardName} collision hazard)</span><br/>
+            <span>Time: ${ROUTE_ORIGINAL.timeHours}h • Fuel: ${ROUTE_ORIGINAL.fuelLiters.toLocaleString()} L</span>
           </div>
         `)
         .addTo(group);
 
-      // B. Recommended Western Bypass (Route 2)
+      // B. Recommended Bypass (Route 2)
       const bypassCoords: [number, number][] = ROUTE_REROUTED.waypoints.map((w) => [w.lat, w.lon]);
       L.polyline(bypassCoords, {
         color: '#10b981',
@@ -492,10 +541,10 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
       })
         .bindPopup(`
           <div style="font-family: sans-serif; font-size: 12px; color: #0f172a; line-height: 1.4;">
-            <strong style="color: #059669;">Route 2: AI Recommended Western Bypass (420 km)</strong><br/>
+            <strong style="color: #059669;">Route 2: AI ${bypassName} (${ROUTE_REROUTED.distanceKm} km)</strong><br/>
             <span>Status: ${isRerouted ? 'ACTIVE & COMMITTED' : 'Recommended AI Option'}</span><br/>
-            <span>Cleared: Bypasses A68A corridor by +38.5 km.</span><br/>
-            <span>Time: 36h • Fuel: 1,180 L • Risk: <strong>LOW</strong></span>
+            <span>Cleared: Bypasses ${hazardName} drift zone via navigable leads.</span><br/>
+            <span>Time: ${ROUTE_REROUTED.timeHours}h • Fuel: ${ROUTE_REROUTED.fuelLiters.toLocaleString()} L • Risk: <strong>LOW</strong></span>
           </div>
         `)
         .addTo(group);
@@ -521,9 +570,11 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     }
 
     // 6. RENDER CONFLICT HAZARD POINT (if conflict active)
-    if (!isRerouted && hasConflict && currentSector === 'peninsula') {
-      const conflictLat = -62.35;
-      const conflictLon = -59.50;
+    if (!isRerouted && hasConflict) {
+      const isIndianSector = currentSector === 'indian-sector' || currentSector === 'all-antarctica';
+      const conflictLat = isIndianSector ? -67.75 : -62.35;
+      const conflictLon = isIndianSector ? 70.20 : -59.50;
+      const conflictBerg = isIndianSector ? 'D28 Megaberg' : 'A68A Megaberg';
 
       L.circle([conflictLat, conflictLon], {
         radius: 14000,
@@ -565,19 +616,21 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
             ⚠️ PROJECTED COLLISION HAZARD
           </div>
           <div><strong>Epoch:</strong> 21 Sep 2026 • 14:00 UTC</div>
-          <div><strong>Target:</strong> Megaberg A68A Drift Corridor</div>
+          <div><strong>Target:</strong> ${conflictBerg} Drift Corridor</div>
           <div><strong>Closest Approach:</strong> 4.8 km (Violates 15 km limit)</div>
           <div style="margin-top: 6px; padding: 5px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 4px; font-size: 11px;">
-            Action Required: Engage Route 2 Western Bypass to restore safety margin.
+            Action Required: Engage Route 2 Offshore Leads Bypass to restore safety margin.
           </div>
         </div>
       `);
     }
 
     // 7. RENDER ICEBERGS, TRAJECTORIES & UNCERTAINTY CORRIDORS
-    if (layerVisibility.icebergs && currentSector === 'peninsula') {
+    if (layerVisibility.icebergs) {
+      const isIndianSector = currentSector === 'indian-sector' || currentSector === 'all-antarctica';
+
       icebergs.forEach((berg) => {
-        const isA68A = berg.id === 'A68A';
+        const isTargetHazard = isIndianSector ? berg.id === 'D28' : berg.id === 'A68A';
         const isSelected = selectedIcebergId === berg.id;
 
         // Current interpolated position for iceberg
@@ -590,10 +643,10 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
         if (layerVisibility.uncertaintyCorridor && berg.corridorPolygon && berg.corridorPolygon.length > 0) {
           const polyCoords: [number, number][] = berg.corridorPolygon.map((p) => [p.lat, p.lon]);
           L.polygon(polyCoords, {
-            color: isA68A ? '#ef4444' : '#0284c7',
+            color: isTargetHazard ? '#ef4444' : '#0284c7',
             weight: 1,
-            fillColor: isA68A ? '#fee2e2' : '#e0f2fe',
-            fillOpacity: isA68A ? 0.35 : 0.2,
+            fillColor: isTargetHazard ? '#fee2e2' : '#e0f2fe',
+            fillOpacity: isTargetHazard ? 0.35 : 0.2,
             dashArray: '3, 4',
           })
             .bindTooltip(`<strong>${berg.id} 95% Bayesian Uncertainty Corridor</strong><br/>Hydrodynamic drift envelope expanding with forecast horizon.`, { sticky: true })
@@ -606,7 +659,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
           if (berg.observedTrack && berg.observedTrack.length > 0) {
             const histCoords: [number, number][] = berg.observedTrack.map((p) => [p.lat, p.lon]);
             L.polyline(histCoords, {
-              color: isA68A ? '#991b1b' : '#475569',
+              color: isTargetHazard ? '#991b1b' : '#475569',
               weight: 2,
               opacity: 0.85,
             })
@@ -617,8 +670,8 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
           // Predicted Drift Track
           const trackPoints: [number, number][] = berg.predictedTrack.map((p) => [p.lat, p.lon]);
           L.polyline(trackPoints, {
-            color: isA68A ? '#ef4444' : '#38bdf8',
-            weight: isA68A ? 3 : 1.5,
+            color: isTargetHazard ? '#ef4444' : '#38bdf8',
+            weight: isTargetHazard ? 3 : 1.5,
             dashArray: '5, 5',
             opacity: 0.9,
           })
@@ -626,8 +679,8 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
             .addTo(group);
         }
 
-        // C. Danger Zone Radius Circle (15 km alert envelope around A68A)
-        if (isA68A) {
+        // C. Danger Zone Radius Circle (15 km alert envelope around target hazard)
+        if (isTargetHazard) {
           L.circle([pos.lat, pos.lon], {
             radius: 15000,
             color: '#ef4444',
@@ -645,11 +698,11 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
               display: flex;
               align-items: center;
               gap: 4px;
-              background: ${isA68A ? '#991b1b' : '#1e293b'};
+              background: ${isTargetHazard ? '#991b1b' : '#1e293b'};
               color: white;
               padding: 2.5px 7px;
               border-radius: 4px;
-              border: 1.5px solid ${isSelected ? '#fde047' : isA68A ? '#fca5a5' : '#94a3b8'};
+              border: 1.5px solid ${isSelected ? '#fde047' : isTargetHazard ? '#fca5a5' : '#94a3b8'};
               font-family: sans-serif;
               font-size: 10px;
               font-weight: 700;
@@ -658,10 +711,10 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
               cursor: pointer;
             ">
               <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${
-                isA68A ? '#f87171' : '#38bdf8'
+                isTargetHazard ? '#f87171' : '#38bdf8'
               };"></span>
               <span>${berg.id}</span>
-              ${isA68A ? '<span style="color: #fca5a5; font-size: 9px;">(HAZARD)</span>' : ''}
+              ${isTargetHazard ? '<span style="color: #fca5a5; font-size: 9px;">(HAZARD)</span>' : ''}
             </div>
           `,
           iconSize: [80, 22],
@@ -673,13 +726,13 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
         marker.bindPopup(`
           <div style="font-family: sans-serif; font-size: 12px; color: #0f172a; line-height: 1.45; min-width: 200px;">
-            <div style="font-weight: bold; color: ${isA68A ? '#b91c1c' : '#1e293b'}; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
+            <div style="font-weight: bold; color: ${isTargetHazard ? '#b91c1c' : '#1e293b'}; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
               ${berg.name}
             </div>
             <div><strong>Classification:</strong> ${berg.classification}</div>
             <div><strong>Dimensions:</strong> ${berg.dimensionsKm.length} × ${berg.dimensionsKm.width} km (Area: ${berg.areaSqKm} km²)</div>
             <div><strong>Drift Velocity:</strong> ${berg.driftSpeedKts} kts • Heading ${berg.driftDirectionDeg}°</div>
-            <div><strong>Current Position:</strong> ${Math.abs(pos.lat).toFixed(2)}°S, ${Math.abs(pos.lon).toFixed(2)}°W</div>
+            <div><strong>Current Position:</strong> ${Math.abs(pos.lat).toFixed(2)}°S, ${pos.lon >= 0 ? pos.lon.toFixed(2) + '°E' : Math.abs(pos.lon).toFixed(2) + '°W'}</div>
             <div><strong>Origin:</strong> ${berg.origin} (Calved: ${berg.calveYear})</div>
             <div><strong>Trajectory Confidence:</strong> <span style="color: #0284c7; font-weight: bold;">89% (Physics-Informed)</span></div>
           </div>
@@ -690,7 +743,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     // 8. RENDER RESEARCH STATIONS (Bharati, Maitri, Dakshin Gangotri, etc.)
     if (layerVisibility.stations) {
       ANTARCTIC_STATIONS.forEach((station) => {
-        const isIndian = station.isIndian;
+        const isPrimary = station.id === 'bharati' || station.id === 'maitri';
 
         const stationIcon = L.divIcon({
           className: 'custom-station-marker',
@@ -699,19 +752,19 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
               display: flex;
               align-items: center;
               gap: 4px;
-              background: ${isIndian ? '#0c2340' : '#ffffff'};
-              color: ${isIndian ? '#ffffff' : '#0f172a'};
-              padding: 2px 7px;
-              border-radius: 12px;
-              border: 1.5px solid ${isIndian ? '#0284c7' : '#94a3b8'};
+              background: ${isPrimary ? '#0b1d3a' : '#1e293b'};
+              color: #ffffff;
+              padding: 2.5px 8px;
+              border-radius: 6px;
+              border: 1.5px solid ${isPrimary ? '#0284c7' : '#64748b'};
               font-family: sans-serif;
               font-size: 10px;
               font-weight: 700;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+              box-shadow: 0 2px 6px rgba(0,0,0,0.35);
               white-space: nowrap;
               cursor: pointer;
             ">
-              <span>${station.flag}</span>
+              <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${isPrimary ? '#38bdf8' : '#94a3b8'};"></span>
               <span>${station.name}</span>
             </div>
           `,
@@ -722,10 +775,10 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
         const stationMarker = L.marker([station.lat, station.lon], { icon: stationIcon }).addTo(group);
         stationMarker.bindPopup(`
           <div style="font-family: sans-serif; font-size: 12px; color: #0f172a; line-height: 1.45; min-width: 220px;">
-            <div style="font-weight: bold; color: ${isIndian ? '#1e3a8a' : '#0f172a'}; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
-              ${station.flag} ${station.name}
+            <div style="font-weight: bold; color: #0369a1; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
+              ${station.name}
             </div>
-            <div><strong>Nation:</strong> ${station.nation}</div>
+            <div><strong>Nation / Base:</strong> ${station.nation}</div>
             <div><strong>Position:</strong> ${Math.abs(station.lat).toFixed(2)}°S, ${station.lon >= 0 ? station.lon.toFixed(2) + '°E' : Math.abs(station.lon).toFixed(2) + '°W'}</div>
             <div style="margin-top: 4px; font-size: 11px; color: #475569;">${station.info}</div>
           </div>
@@ -1149,7 +1202,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
                   <label className="flex items-center justify-between p-1 hover:bg-slate-50 rounded cursor-pointer">
                     <span className="flex items-center gap-2">
-                      <span>🇮🇳</span>
+                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
                       <span>Research Stations</span>
                     </span>
                     <input
@@ -1206,42 +1259,11 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
         </div>
       </div>
 
-      {/* 2. SUBTITLE BADGE & LAST SAFE DEPARTURE TIME BANNER */}
-      <div className="absolute top-14 left-2.5 z-20 pointer-events-none flex flex-col gap-2 max-w-sm">
-        <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 text-white rounded px-3 py-1.5 shadow-md">
-          <div className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold">
-            {activeSectorInfo.name}
-          </div>
-          <div className="text-[11px] text-slate-300 mt-0.5 truncate">
-            {activeSectorInfo.subtitle}
-          </div>
-        </div>
-
-        {/* Last Safe Departure Time Banner */}
-        <div className="bg-gradient-to-r from-slate-900/90 to-blue-950/90 backdrop-blur-md border border-sky-400/40 text-white rounded-md p-2.5 shadow-lg pointer-events-auto">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-sky-300 flex items-center gap-1">
-              <Clock className="w-3 h-3 text-sky-400" />
-              Last Safe Departure Time
-            </span>
-            <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.2 rounded border border-amber-400/30">
-              T-27h 45m
-            </span>
-          </div>
-          <div className="text-xs font-bold text-slate-100 mt-1">
-            20 Sep 2026 • 18:30 UTC
-          </div>
-          <div className="text-[10px] text-slate-300 mt-0.5 leading-snug">
-            Closure condition: A68A drift trajectory & 78% pack ice convergence will close Bransfield corridor.
-          </div>
-        </div>
-      </div>
-
       {/* 3. THE LEAFLET MAP DOM CONTAINER */}
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
       {/* 4. REAL-TIME CONFLICT ALERT OVERLAY */}
-      {!isRerouted && hasConflict && currentSector === 'peninsula' && (
+      {!isRerouted && hasConflict && (
         <div className="absolute top-14 right-2.5 z-20 pointer-events-auto max-w-xs animate-in fade-in duration-300">
           <div className="bg-rose-950/90 backdrop-blur-md border border-rose-500/80 text-white rounded-lg p-3 shadow-xl">
             <div className="flex items-start gap-2">
@@ -1251,7 +1273,11 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
                   Iceberg Collision Threat Detected
                 </h4>
                 <p className="text-[11px] text-rose-200/90 mt-0.5 leading-snug">
-                  Iceberg <strong>A68A</strong> drift trajectory intersects Route 1 on <strong>21 Sep • 14:00 UTC</strong> (CPA: 4.8 km).
+                  {currentSector === 'peninsula' ? (
+                    <>Iceberg <strong>A68A</strong> drift trajectory intersects Route 1 on <strong>21 Sep • 14:00 UTC</strong> (CPA: 4.8 km).</>
+                  ) : (
+                    <>Iceberg <strong>D28</strong> tabular drift intersects inshore Route 1 on <strong>21 Sep • 12:00 UTC</strong> (CPA: 3.2 km).</>
+                  )}
                 </p>
                 {onRecalculateRoute && (
                   <button
@@ -1262,7 +1288,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
                     {isRecalculating ? (
                       <>
                         <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Computing Western Bypass...</span>
+                        <span>Computing Offshore Bypass...</span>
                       </>
                     ) : (
                       <>

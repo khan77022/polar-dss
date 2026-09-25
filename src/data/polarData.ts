@@ -1,14 +1,14 @@
 import { Iceberg, Vessel, RouteOption, NavigationAlert, UserSession, AheadVesselReport } from '../types';
 
 export const RESEARCH_VESSEL: Vessel = {
-  name: 'MV Vasiliy Golovnin (ISEA-44)',
-  callSign: 'VGN-IND',
-  polarClass: 'PC3 (Chartered Polar Heavy Icebreaker - NCPOR)',
+  name: 'MV Vasiliy Golovnin',
+  callSign: 'VGN-PC3',
+  polarClass: 'PC3 Polar Heavy Icebreaker',
   lengthM: 161,
   beamM: 22.8,
-  currentPos: { lat: -62.45, lon: -59.10 }, // Bransfield Strait / King George Approach
+  currentPos: { lat: -68.85, lon: 74.20 }, // Prydz Bay approach / East Antarctic Corridor
   speedKts: 12.5,
-  headingDeg: 215,
+  headingDeg: 268,
   fuelRateLPerHour: 115,
   startPort: 'Bharati Station (Larsemann Hills, 69°24\'S 76°11\'E)',
   destination: 'Maitri Station (Schirmacher Oasis, 70°46\'S 11°44\'E)',
@@ -19,25 +19,25 @@ export const RESEARCH_VESSEL: Vessel = {
 // Vessels operating ahead along the navigation corridor (Vanguard Mesh Network)
 export const AHEAD_VESSELS: AheadVesselReport[] = [
   {
-    id: 'prv-sagar-dhruv',
-    vesselName: 'PRV Sagar Dhruv (साग़र ध्रुव)',
-    callSign: 'VT-PRV',
-    flag: '🇮🇳',
-    nation: 'India (MoES / NCPOR)',
+    id: 'prv-polar-vanguard',
+    vesselName: 'RV Polar Vanguard',
+    callSign: 'PVG-01',
+    flag: '',
+    nation: 'Polar Research Fleet',
     role: 'Vanguard Deep Polar Science & Lead Scout',
-    polarClass: 'PC2 (Heavy Polar Research Vessel)',
-    currentPos: { lat: -63.18, lon: -60.42 }, // 48 km ahead in Bransfield-Gerlache approach
+    polarClass: 'PC2 Heavy Polar Research Vessel',
+    currentPos: { lat: -68.65, lon: 71.80 }, // 48 km ahead in Amery margin coastal leads
     distanceAheadKm: 48,
-    bearingDeg: 220,
+    bearingDeg: 265,
     speedKts: 11.2,
-    headingDeg: 218,
+    headingDeg: 268,
     lastReportTime: '18 Sep • 14:15 UTC (15 min ago)',
     observedSeaIceConcentration: 42,
     floeThicknessM: 0.95,
     leadCondition: 'Clear Open Leads',
     icebergSightings: {
       count: 3,
-      details: 'Two tabular fragments (400m) & 1 medium bergy bit drifting NW. Clear 4 nm south of our track.',
+      details: 'Two tabular fragments (400m) & 1 medium bergy bit drifting WNW. Clear 4 nm south of our track.',
       nearestKm: 7.2,
     },
     weather: {
@@ -48,31 +48,31 @@ export const AHEAD_VESSELS: AheadVesselReport[] = [
       visibilityKm: 12,
       freezingSpray: 'Light',
     },
-    vPirepNotes: 'Transiting WP-03 safely. Acoustic sensors and forward sonar confirm open lead opening west of Low Island. High recommendation to engage Western Bypass (Route 2) as A68A megaberg pressure ridge is tightening the direct channel.',
-    photoUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=900&q=80',
+    vPirepNotes: 'Transiting coastal waypoint safely. Acoustic sensors and forward sonar confirm open lead opening north of the fast ice boundary. High recommendation to engage Offshore Leads Bypass (Route 2) as D28 tabular berg pressure ridge is tightening the direct inshore channel.',
+    photoUrl: '/src/assets/images/polar_vanguard_icebreaker_1790325622639.jpg',
     radarEchoStatus: 'Clear',
     isIndian: true,
   },
   {
-    id: 'orv-sagar-kanya',
-    vesselName: 'ORV Sagar Kanya (साग़र कन्या)',
-    callSign: 'VTCG',
-    flag: '🇮🇳',
-    nation: 'India (MoES Oceanographic Fleet)',
-    role: 'Southern Ocean Hydrographic Patrol',
+    id: 'orv-ocean-surveyor',
+    vesselName: 'ORV Ocean Surveyor',
+    callSign: 'OSV-02',
+    flag: '',
+    nation: 'Oceanographic Fleet',
+    role: 'High-Latitude Hydrographic Patrol',
     polarClass: 'Ice-Strengthened High-Latitude Vessel',
-    currentPos: { lat: -64.40, lon: -62.80 }, // 115 km ahead, near Gerlache northern margin
+    currentPos: { lat: -67.90, lon: 58.60 }, // 115 km ahead, Enderby Land passage
     distanceAheadKm: 115,
-    bearingDeg: 212,
+    bearingDeg: 262,
     speedKts: 10.4,
-    headingDeg: 205,
+    headingDeg: 260,
     lastReportTime: '18 Sep • 13:40 UTC (50 min ago)',
     observedSeaIceConcentration: 58,
     floeThicknessM: 1.2,
     leadCondition: 'Navigable Fractures',
     icebergSightings: {
       count: 5,
-      details: 'Cluster of grounded tabular remnants off Brabant Island. Radar reflections sharp.',
+      details: 'Cluster of grounded tabular remnants off Enderby coastal bank. Radar reflections sharp.',
       nearestKm: 11.5,
     },
     weather: {
@@ -83,31 +83,31 @@ export const AHEAD_VESSELS: AheadVesselReport[] = [
       visibilityKm: 9,
       freezingSpray: 'Moderate',
     },
-    vPirepNotes: 'Gerlache strait entrance has pancake ice consolidation forming. Water temperature -1.6°C. Ship hull experiencing light brash ice impact, well within safety envelope. Route 2 corridor remains fully navigable.',
-    photoUrl: 'https://images.unsplash.com/photo-1516495312341-3da8005e4e73?auto=format&fit=crop&w=900&q=80',
+    vPirepNotes: 'Enderby Land approach has pancake ice consolidation forming. Water temperature -1.6°C. Ship hull experiencing light brash ice impact, well within safety envelope. Route 2 corridor remains fully navigable.',
+    photoUrl: '/src/assets/images/ocean_surveyor_ship_1790325637362.jpg',
     radarEchoStatus: 'Scattered Growlers',
     isIndian: true,
   },
   {
-    id: 'rrs-attenborough',
-    vesselName: 'RRS Sir David Attenborough',
-    callSign: 'ZDLP1',
-    flag: '🇬🇧',
-    nation: 'United Kingdom (BAS)',
+    id: 'rrs-polar-explorer',
+    vesselName: 'RRS Polar Explorer',
+    callSign: 'PEX-03',
+    flag: '',
+    nation: 'International Polar Logistics',
     role: 'Polar Logistics & Marine Research Vanguard',
     polarClass: 'PC4 Polar Vessel',
-    currentPos: { lat: -66.85, lon: -67.20 }, // 260 km ahead, southern sector approaching Rothera
+    currentPos: { lat: -68.30, lon: 42.10 }, // 260 km ahead in Cosmonaut Sea corridor
     distanceAheadKm: 260,
-    bearingDeg: 208,
+    bearingDeg: 258,
     speedKts: 13.0,
-    headingDeg: 195,
+    headingDeg: 255,
     lastReportTime: '18 Sep • 12:20 UTC (2h ago)',
     observedSeaIceConcentration: 68,
     floeThicknessM: 1.4,
     leadCondition: 'Heavy Pressure Ridges',
     icebergSightings: {
       count: 2,
-      details: 'Stable calved iceberg near Adelaide Island entrance.',
+      details: 'Stable calved iceberg near Cosmonaut Sea entrance.',
       nearestKm: 14.0,
     },
     weather: {
@@ -118,31 +118,31 @@ export const AHEAD_VESSELS: AheadVesselReport[] = [
       visibilityKm: 7,
       freezingSpray: 'Moderate',
     },
-    vPirepNotes: 'Adelaide Island sea ice pressure ridge requires active hull propulsion. X-band radar picking up heavy brash field. Advise Vasiliy Golovnin convoy to prepare ice-breaking watch past lat 66°S.',
-    photoUrl: 'https://images.unsplash.com/photo-1505705694340-019e1e335916?auto=format&fit=crop&w=900&q=80',
+    vPirepNotes: 'Cosmonaut Sea pressure ridge requires active hull propulsion. X-band radar picking up heavy brash field. Advise Vasiliy Golovnin convoy to prepare ice-breaking watch past lon 45°E.',
+    photoUrl: '/src/assets/images/polar_logistics_vessel_1790325650990.jpg',
     radarEchoStatus: 'Clear',
     isIndian: false,
   },
   {
-    id: 'akademik-fedorov',
-    vesselName: 'R/V Akademik Fedorov',
-    callSign: 'UBRF',
-    flag: '🇷🇺',
-    nation: 'Antarctic Expeditions Service',
+    id: 'rv-arctic-ice-scout',
+    vesselName: 'R/V Arctic Ice Scout',
+    callSign: 'AIS-04',
+    flag: '',
+    nation: 'Polar Expeditions Service',
     role: 'Heavy Supply Transporter & Ice Recon',
     polarClass: 'Arc7 Heavy Polar Class',
-    currentPos: { lat: -61.90, lon: -57.40 }, // 65 km north-east, scanning outer Weddell outflow
-    distanceAheadKm: 65,
-    bearingDeg: 45,
+    currentPos: { lat: -69.20, lon: 24.50 }, // Ahead near Astrid Coast approach
+    distanceAheadKm: 380,
+    bearingDeg: 252,
     speedKts: 12.8,
-    headingDeg: 40,
+    headingDeg: 250,
     lastReportTime: '18 Sep • 13:55 UTC (35 min ago)',
     observedSeaIceConcentration: 74,
     floeThicknessM: 1.8,
     leadCondition: 'Heavy Pressure Ridges',
     icebergSightings: {
-      count: 8,
-      details: 'Megaberg A68A trailing fragment cluster detected. Outflow drift moving fast at 1.5 kts NW.',
+      count: 6,
+      details: 'Tabular fragment cluster detected. Outflow drift moving fast at 1.5 kts NW.',
       nearestKm: 5.4,
     },
     weather: {
@@ -153,8 +153,8 @@ export const AHEAD_VESSELS: AheadVesselReport[] = [
       visibilityKm: 6,
       freezingSpray: 'Severe',
     },
-    vPirepNotes: 'WARNING to southbound vessels: A68A calve front is shedding growlers into the eastern Bransfield entry corridor. Direct Route 1 is unsafe for unescorted vessels. Divert west immediately.',
-    photoUrl: 'https://images.unsplash.com/photo-1483181957632-8bda974cbc91?auto=format&fit=crop&w=900&q=80',
+    vPirepNotes: 'WARNING to westbound vessels: Inshore fast-ice zone is shedding growlers into the direct corridor. Route 1 inshore channel is unsafe for unescorted vessels. Divert to Route 2 offshore leads immediately.',
+    photoUrl: '/src/assets/images/heavy_icebreaker_polar_1790325665941.jpg',
     radarEchoStatus: 'Severe Clutter',
     isIndian: false,
   },
@@ -165,7 +165,7 @@ export const INDIAN_POLAR_HUBS = [
   {
     id: 'bharati',
     code: 'BHT-IND',
-    name: 'Bharati Station (भारती अनुसंधान केंद्र)',
+    name: 'Bharati Research Station',
     shortName: 'Bharati Base (Larsemann Hills)',
     lat: -69.407,
     lon: 76.187,
@@ -174,13 +174,13 @@ export const INDIAN_POLAR_HUBS = [
     winterCrew: 24,
     summerCrew: 47,
     keyScience: 'Atmospheric Physics, Marine Biology, Satellite Ground Station, Glaciology',
-    logisticsRole: 'India\'s state-of-the-art permanent station commissioned in 2012 with automated satellite telemetry and sheltered coastal fjord.',
+    logisticsRole: 'Permanent polar research base commissioned in 2012 with automated satellite telemetry and sheltered coastal fjord.',
     color: '#0284c7',
   },
   {
     id: 'maitri',
     code: 'MTR-IND',
-    name: 'Maitri Station (मैत्री अनुसंधान केंद्र)',
+    name: 'Maitri Research Station',
     shortName: 'Maitri Base (Schirmacher Oasis)',
     lat: -70.767,
     lon: 11.733,
@@ -189,13 +189,13 @@ export const INDIAN_POLAR_HUBS = [
     winterCrew: 25,
     summerCrew: 65,
     keyScience: 'Meteorology, Geomagnetism, Human Physiology, Seismology, Environmental Science',
-    logisticsRole: 'India\'s 2nd permanent base established in 1989 near Lake Priyadarshini; connected via 100km ice tractor transit to India Bay.',
+    logisticsRole: 'Permanent research base established in 1989 near Lake Priyadarshini; connected via 100km ice tractor transit to India Bay.',
     color: '#0369a1',
   },
   {
     id: 'dakshin-gangotri',
     code: 'DG-HIST',
-    name: 'Dakshin Gangotri (दक्षिण गंगोत्री - ऐतिहासिक आधार)',
+    name: 'Dakshin Gangotri AWS Station',
     shortName: 'Dakshin Gangotri (Ice Shelf AWS)',
     lat: -70.093,
     lon: 12.000,
@@ -204,13 +204,13 @@ export const INDIAN_POLAR_HUBS = [
     winterCrew: 0,
     summerCrew: 10,
     keyScience: 'Automated Weather Station (AWS), Magnetometer Telemetry, Ice Shelf Calving Dynamics',
-    logisticsRole: 'First Indian station established 1983; now acts as an automated weather observation post and emergency fuel transit cache.',
+    logisticsRole: 'First Antarctic station established 1983; now acts as an automated weather observation post and emergency fuel transit cache.',
     color: '#0891b2',
   },
   {
     id: 'india-bay',
     code: 'IB-JETTY',
-    name: 'India Bay Ice Shelf Anchorage (इंडिया बे लंगरगाह)',
+    name: 'India Bay Ice Shelf Anchorage',
     shortName: 'India Bay Ice Shelf Jetty',
     lat: -69.983,
     lon: 11.917,
@@ -225,7 +225,7 @@ export const INDIAN_POLAR_HUBS = [
   {
     id: 'prydz-bay-marine',
     code: 'PRYDZ-TRANSECT',
-    name: 'Prydz Bay Marine Oceanographic Transect (प्राइडज़ बे)',
+    name: 'Prydz Bay Oceanographic Transect',
     shortName: 'Prydz Bay Coastal Sampling Grid',
     lat: -68.750,
     lon: 74.200,
@@ -240,23 +240,23 @@ export const INDIAN_POLAR_HUBS = [
   {
     id: 'ncpor-goa',
     code: 'NCPOR-HQ',
-    name: 'Mormugao Port / NCPOR Goa (एनसीपीओआर गोवा मुख्यालय)',
-    shortName: 'Goa / Mormugao Port (NCPOR HQ)',
+    name: 'NCPOR Operations Center',
+    shortName: 'NCPOR Polar Mission Control',
     lat: 15.405,
     lon: 73.805,
-    location: 'Headland Sada, Vasco-da-Gama, Goa, India',
+    location: 'Vasco-da-Gama, Goa',
     elevationM: 40,
     winterCrew: 150,
     summerCrew: 150,
     keyScience: 'Mission Control, ConvLSTM Ice Forecasting Model Server, Satellite Data Ingestion',
-    logisticsRole: 'Apex research institution under Ministry of Earth Sciences (MoES); commands all Indian Antarctic Expeditions.',
+    logisticsRole: 'Apex polar science and logistics control center commanding Antarctic expedition voyages.',
     color: '#1d4ed8',
   },
   {
     id: 'cape-town-gateway',
     code: 'CPT-GATE',
-    name: 'Cape Town Gateway Port (केप टाउन भारतीय गेटवे)',
-    shortName: 'Cape Town Port (ISEA Staging Gateway)',
+    name: 'Cape Town Gateway Port',
+    shortName: 'Cape Town Staging Gateway',
     lat: -33.905,
     lon: 18.425,
     location: 'Table Bay Harbour, Western Cape, South Africa',
@@ -264,23 +264,8 @@ export const INDIAN_POLAR_HUBS = [
     winterCrew: 12,
     summerCrew: 30,
     keyScience: 'Pre-voyage calibrations, CTD sensor trials, Icebreaker bunkering',
-    logisticsRole: 'Official boarding and departure harbor for all 44 Indian Scientific Expeditions to Antarctica.',
+    logisticsRole: 'Staging harbor and embarkation point for polar research expeditions to East Antarctica.',
     color: '#059669',
-  },
-  {
-    id: 'king-george-link',
-    code: 'KGI-LINK',
-    name: 'King George Island Gateway (किंग जॉर्ज द्वीप)',
-    shortName: 'King George Island (Joint Polar Gateway)',
-    lat: -62.190,
-    lon: -58.980,
-    location: 'South Shetland Islands (Bransfield Strait entry)',
-    elevationM: 10,
-    winterCrew: 40,
-    summerCrew: 120,
-    keyScience: 'Inter-station logistics, Twin Otter polar aviation, Antarctic Peninsula link',
-    logisticsRole: 'Air-sea transfer node used during collaborative West Antarctic & Southern Ocean scientific cruises.',
-    color: '#d97706',
   },
 ];
 
@@ -332,79 +317,67 @@ export const INDIAN_VESSELS: Vessel[] = [
   },
 ];
 
-// Major Antarctic research stations - with India's prominent stations highlighted
+// Major Antarctic research stations in the operating sector
 export const ANTARCTIC_STATIONS = [
-  // Indian National Stations
   {
     id: 'bharati',
-    name: 'Bharati Station (भारत)',
+    name: 'Bharati Station',
     lat: -69.407,
     lon: 76.187,
-    nation: 'India (NCPOR / MoES)',
-    flag: '🇮🇳',
+    nation: 'Polar Research Base (NCPOR)',
+    flag: '',
     isIndian: true,
-    info: 'Larsemann Hills, Prydz Bay. 3rd Indian Permanent Base (Commissioned 2012). Atmospheric, biological & oceanographic sciences.',
+    info: 'Larsemann Hills, Prydz Bay. Permanent Antarctic research station commissioned in 2012. Atmospheric, biological & oceanographic sciences.',
   },
   {
     id: 'maitri',
-    name: 'Maitri Station (मैत्री)',
+    name: 'Maitri Station',
     lat: -70.767,
     lon: 11.733,
-    nation: 'India (NCPOR / MoES)',
-    flag: '🇮🇳',
+    nation: 'Polar Research Base (NCPOR)',
+    flag: '',
     isIndian: true,
-    info: 'Schirmacher Oasis, Queen Maud Land. 2nd Indian Permanent Base (Commissioned 1989). Year-round polar research.',
+    info: 'Schirmacher Oasis, Queen Maud Land. Permanent Antarctic research station. Connected to India Bay ice shelf anchorage via 100km tractor corridor.',
   },
   {
     id: 'dakshin-gangotri',
-    name: 'Dakshin Gangotri (दक्षिण गंगोत्री)',
+    name: 'Dakshin Gangotri AWS',
     lat: -70.093,
     lon: 12.000,
-    nation: 'India (Historical Base / Supply Depot)',
-    flag: '🇮🇳',
+    nation: 'Historical Base / Automatic Weather Station',
+    flag: '',
     isIndian: true,
-    info: 'Historical 1st Indian Antarctic Station (1983). Now an automated telemetry & supply transit depot.',
-  },
-  // Key International Stations in Navigation Corridors
-  {
-    id: 'frei',
-    name: 'Frei Base / Escudero (King George Is.)',
-    lat: -62.19,
-    lon: -58.98,
-    nation: 'Chile / Multi-national Logistics',
-    flag: '🇨🇱',
-    isIndian: false,
-    info: 'Key northern logistics hub & airway corridor into the Antarctic Peninsula.',
+    info: 'First Antarctic station (1983). Operates continuous automated telemetry and emergency fuel transit depot.',
   },
   {
-    id: 'rothera',
-    name: 'Rothera Research Station',
-    lat: -67.57,
-    lon: -68.12,
-    nation: 'United Kingdom (BAS)',
-    flag: '🇬🇧',
+    id: 'progress',
+    name: 'Progress Station',
+    lat: -69.37,
+    lon: 76.38,
+    nation: 'International Antarctic Logistics',
+    flag: '',
     isIndian: false,
-    info: 'Adelaide Island deep polar science and marine logistics runway.',
+    info: 'Larsemann Hills adjacent station in Prydz Bay; collaborative weather and aerodrome link.',
   },
   {
-    id: 'palmer',
-    name: 'Palmer Station',
-    lat: -64.77,
-    lon: -64.05,
-    nation: 'United States (USAP)',
-    flag: '🇺🇸',
+    id: 'syowa',
+    name: 'Syowa Station',
+    lat: -69.00,
+    lon: 39.58,
+    nation: 'East Antarctic Research Center',
+    flag: '',
     isIndian: false,
-    info: 'Anvers Island biological & oceanographic laboratory.',
+    info: 'East Ongul Island, Queen Maud Land coastal approach; upper atmosphere and oceanographic monitoring.',
   },
   {
-    id: 'esperanza',
-    name: 'Esperanza Base',
-    lat: -63.40,
-    lon: -56.99,
-    nation: 'Argentina',
-    flag: '🇦🇷',
+    id: 'troll',
+    name: 'Troll Station',
+    lat: -72.01,
+    lon: 2.53,
+    nation: 'Queen Maud Land Plateau Base',
+    flag: '',
     isIndian: false,
-    info: 'Hope Bay, northern tip of Antarctic Peninsula.',
+    info: 'Jutulsessen nunatak observatory and intercontinental polar airfield link.',
   },
 ];
 
@@ -531,107 +504,119 @@ export const ICEBERGS: Iceberg[] = [
   },
   {
     id: 'D28',
-    name: 'D28 ("Moo Cow")',
-    classification: 'Medium Tabular',
-    currentPos: { lat: -65.20, lon: -60.50 }, // Larsen B remnant embayment
-    dimensionsKm: { length: 30, width: 14, heightAboveWaterM: 28 },
+    name: 'D28 (Amery Tabular Megaberg)',
+    classification: 'Tabular Megaberg',
+    currentPos: { lat: -68.35, lon: 72.80 }, // Outflow from Amery Ice Shelf drifting WNW across coastal shipping lane
+    dimensionsKm: { length: 30, width: 14, heightAboveWaterM: 32 },
     areaSqKm: 420,
-    driftSpeedKts: 0.6,
-    driftDirectionDeg: 10,
-    riskLevel: 'low',
-    origin: 'Amery Ice Shelf (East Antarctica drift)',
+    driftSpeedKts: 1.4,
+    driftDirectionDeg: 295,
+    riskLevel: 'high',
+    origin: 'Amery Ice Shelf (East Antarctica)',
     calveYear: 2019,
-    imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80',
-    imageCaption: 'High-latitude sea ice floe and tabular remnant',
+    imageUrl: '/src/assets/images/polar_vanguard_icebreaker_1790325622639.jpg',
+    imageCaption: 'D28 tabular megaberg calved from Amery Ice Shelf drifting through East Antarctic coastal leads',
     observedTrack: [
-      { lat: -65.80, lon: -60.30, date: '16 Sep', timeUtc: '00:00', speedKts: 0.5, uncertaintyRadiusKm: 2.0 },
-      { lat: -65.20, lon: -60.50, date: '18 Sep', timeUtc: '14:30', speedKts: 0.6, uncertaintyRadiusKm: 3.0 },
+      { lat: -68.85, lon: 74.50, date: '15 Sep', timeUtc: '00:00', speedKts: 1.1, uncertaintyRadiusKm: 2.0 },
+      { lat: -68.70, lon: 73.90, date: '16 Sep', timeUtc: '06:00', speedKts: 1.2, uncertaintyRadiusKm: 2.5 },
+      { lat: -68.50, lon: 73.30, date: '17 Sep', timeUtc: '12:00', speedKts: 1.3, uncertaintyRadiusKm: 3.0 },
+      { lat: -68.35, lon: 72.80, date: '18 Sep', timeUtc: '14:30', speedKts: 1.4, uncertaintyRadiusKm: 3.5 },
     ],
     predictedTrack: [
-      { lat: -65.20, lon: -60.50, date: '18 Sep', timeUtc: '14:30', speedKts: 0.6, uncertaintyRadiusKm: 3.0 },
-      { lat: -64.70, lon: -60.70, date: '20 Sep', timeUtc: '12:00', speedKts: 0.6, uncertaintyRadiusKm: 8.0 },
-      { lat: -64.20, lon: -60.90, date: '22 Sep', timeUtc: '12:00', speedKts: 0.7, uncertaintyRadiusKm: 15.0 },
+      { lat: -68.35, lon: 72.80, date: '18 Sep', timeUtc: '14:30', speedKts: 1.4, uncertaintyRadiusKm: 3.5 },
+      { lat: -68.15, lon: 72.00, date: '19 Sep', timeUtc: '12:00', speedKts: 1.4, uncertaintyRadiusKm: 7.0 },
+      { lat: -67.95, lon: 71.10, date: '20 Sep', timeUtc: '12:00', speedKts: 1.5, uncertaintyRadiusKm: 12.0 },
+      { lat: -67.75, lon: 70.20, date: '21 Sep', timeUtc: '14:00', speedKts: 1.6, uncertaintyRadiusKm: 18.0 }, // Conflict point on Route 1
+      { lat: -67.50, lon: 69.10, date: '22 Sep', timeUtc: '12:00', speedKts: 1.5, uncertaintyRadiusKm: 26.0 },
     ],
     corridorPolygon: [
-      { lat: -65.20, lon: -60.58 },
-      { lat: -64.70, lon: -60.88 },
-      { lat: -64.18, lon: -61.20 },
-      { lat: -64.22, lon: -60.60 },
-      { lat: -64.70, lon: -60.52 },
-      { lat: -65.20, lon: -60.42 },
+      { lat: -68.35, lon: 72.90 },
+      { lat: -68.10, lon: 72.25 },
+      { lat: -67.85, lon: 71.30 },
+      { lat: -67.60, lon: 70.40 },
+      { lat: -67.30, lon: 69.20 },
+      { lat: -67.65, lon: 68.85 },
+      { lat: -67.95, lon: 69.90 },
+      { lat: -68.20, lon: 70.90 },
+      { lat: -68.45, lon: 71.85 },
+      { lat: -68.35, lon: 72.90 },
     ],
   },
 ];
 
-// Initial planned route (Direct Bransfield Strait corridor)
-// Note: Intersects predicted A68A trajectory on 21 Sep!
+// Initial planned route (Direct Inshore Fast-Ice Corridor: Bharati ➔ Maitri)
+// Note: Intersects predicted D28 Megaberg trajectory on 21 Sep!
 export const ROUTE_ORIGINAL: RouteOption = {
   id: 'route-original',
-  name: 'Route 1 (Shortest / Direct)',
+  name: 'Route 1 (Direct Inshore Track)',
   objective: 'shortest',
-  distanceKm: 380,
-  timeHours: 32,
-  fuelLiters: 1450,
+  distanceKm: 2850,
+  timeHours: 124,
+  fuelLiters: 14250,
   iceRisk: 'High',
   icebergRisk: 'High',
   recommendedFor: 'Time-critical emergency transit only',
   hasConflict: true,
-  conflictAtKm: 185,
+  conflictAtKm: 340,
   waypoints: [
-    { lat: -62.19, lon: -58.98 }, // King George Island (Frei Base)
-    { lat: -62.45, lon: -59.10 }, // Current vessel position
-    { lat: -62.80, lon: -59.60 }, // Enters Bransfield Passage
-    { lat: -63.50, lon: -60.80 }, // CONFLICT ZONE with A68A drift corridor!
-    { lat: -64.77, lon: -64.05 }, // Palmer Station approach (Gerlache Strait)
-    { lat: -66.10, lon: -66.50 }, // Grandidier Channel
-    { lat: -67.57, lon: -68.12 }, // Rothera Research Station
+    { lat: -69.41, lon: 76.19 }, // Bharati Station (Larsemann Hills) Departure
+    { lat: -68.85, lon: 74.20 }, // Current vessel position (Prydz Bay Exit)
+    { lat: -68.40, lon: 72.50 }, // Inshore Amery Ice Shelf channel
+    { lat: -67.75, lon: 70.20 }, // CONFLICT ZONE with D28 megaberg drift corridor!
+    { lat: -67.50, lon: 58.00 }, // Enderby Land inshore fast-ice margin
+    { lat: -67.90, lon: 42.00 }, // Cosmonaut Sea coastal margin
+    { lat: -68.80, lon: 26.00 }, // Riiser-Larsen Sea approach
+    { lat: -69.60, lon: 15.00 }, // Astrid Coast ice shelf approach
+    { lat: -69.98, lon: 11.92 }, // India Bay Anchorage / Maitri Station Jetty
   ],
 };
 
-// Rerouted Safe Alternative (West of Low Island / Western Bransfield Bypass)
+// Rerouted Safe Alternative (AI Optimized Offshore Leads Bypass)
 export const ROUTE_REROUTED: RouteOption = {
   id: 'route-rerouted',
-  name: 'Route 2 (Balanced / Optimized)',
+  name: 'Route 2 (Balanced / Offshore Leads Bypass)',
   objective: 'balanced',
-  distanceKm: 420,
-  timeHours: 36,
-  fuelLiters: 1180,
+  distanceKm: 2980,
+  timeHours: 132,
+  fuelLiters: 11650,
   iceRisk: 'Low',
   icebergRisk: 'Low',
   recommendedFor: 'Recommended for selected objective',
   hasConflict: false,
   waypoints: [
-    { lat: -62.19, lon: -58.98 }, // King George Island
-    { lat: -62.45, lon: -59.10 }, // Current vessel position
-    { lat: -62.60, lon: -60.20 }, // Deflects NW around Livingston Island
-    { lat: -63.15, lon: -61.90 }, // Safe deep-water passage avoiding A68A corridor
-    { lat: -64.20, lon: -63.40 }, // Outer Gerlache entry
-    { lat: -64.77, lon: -64.05 }, // Palmer Station corridor
-    { lat: -66.10, lon: -66.50 }, // Grandidier Channel
-    { lat: -67.57, lon: -68.12 }, // Rothera Station
+    { lat: -69.41, lon: 76.19 }, // Bharati Station
+    { lat: -68.85, lon: 74.20 }, // Current vessel position
+    { lat: -67.20, lon: 73.00 }, // Deflects north into open marginal leads away from Amery pack ice
+    { lat: -66.50, lon: 69.80 }, // Safely clears D28 trajectory by >42 km
+    { lat: -66.10, lon: 56.50 }, // Navigates low-drag open water leads north of Enderby Land
+    { lat: -66.80, lon: 40.50 }, // Deep open leads through Cosmonaut Sea
+    { lat: -67.90, lon: 25.00 }, // Clear of coastal grounded bergs
+    { lat: -69.20, lon: 14.00 }, // Safe approach vector into Astrid Coast
+    { lat: -69.98, lon: 11.92 }, // India Bay Anchorage / Maitri Station
   ],
 };
 
-// Route 3: Deep Ocean Safety Track (Lowest ice/iceberg density, longest distance)
+// Route 3: Deep Southern Ocean Safety Track (Lowest ice/iceberg density, offshore arc)
 export const ROUTE_MAX_SAFETY: RouteOption = {
   id: 'route-safety',
-  name: 'Route 3 (Lowest Risk / Wide Offshore)',
+  name: 'Route 3 (Lowest Risk / Deep Ocean Offshore)',
   objective: 'safety',
-  distanceKm: 510,
-  timeHours: 44,
-  fuelLiters: 1300,
+  distanceKm: 3260,
+  timeHours: 146,
+  fuelLiters: 12900,
   iceRisk: 'Low',
   icebergRisk: 'Very Low',
   recommendedFor: 'Severe weather / low-visibility conditions',
   hasConflict: false,
   waypoints: [
-    { lat: -62.19, lon: -58.98 },
-    { lat: -62.45, lon: -59.10 },
-    { lat: -62.10, lon: -61.20 }, // Far north into Drake Passage margin
-    { lat: -63.00, lon: -64.50 }, // Deep open ocean
-    { lat: -64.50, lon: -66.20 }, // Clear of all coastal grounded bergs
-    { lat: -66.30, lon: -68.00 }, // Outer Bellingshausen Sea
-    { lat: -67.57, lon: -68.12 }, // Rothera Station
+    { lat: -69.41, lon: 76.19 },
+    { lat: -68.85, lon: 74.20 },
+    { lat: -65.50, lon: 72.00 }, // Wide northward arc into open Southern Ocean
+    { lat: -64.80, lon: 60.00 }, // Clear of all marginal ice pack
+    { lat: -65.20, lon: 45.00 }, // Deep ocean transit
+    { lat: -66.00, lon: 30.00 }, // Open water corridor
+    { lat: -67.50, lon: 16.00 }, // Gradual approach south
+    { lat: -69.98, lon: 11.92 }, // India Bay / Maitri Station
   ],
 };
 
@@ -641,7 +626,7 @@ export const INITIAL_ALERTS: NavigationAlert[] = [
     severity: 'high',
     title: 'Potential iceberg encounter',
     timestamp: '21 Sep • 14:00 UTC',
-    description: 'Predicted trajectory for A68A intersects planned route corridor. Closest point of approach: 4.8 km.',
+    description: 'Predicted trajectory for Megaberg D28 intersects planned Route 1 corridor. Closest point of approach: 4.8 km.',
     distanceKm: 4.8,
     resolved: false,
   },
@@ -650,7 +635,7 @@ export const INITIAL_ALERTS: NavigationAlert[] = [
     severity: 'warning',
     title: 'Sea-ice concentration increasing',
     timestamp: '22 Sep • 06:00 UTC',
-    description: 'ConvLSTM forecast indicates marginal ice zone expanding in southern Gerlache Strait (concentration > 65%).',
+    description: 'ConvLSTM forecast indicates pack ice convergence along coastal shelf (concentration > 70%).',
     resolved: false,
   },
   {
@@ -658,7 +643,7 @@ export const INITIAL_ALERTS: NavigationAlert[] = [
     severity: 'info',
     title: 'New observation available',
     timestamp: '18 Sep • 13:45 UTC',
-    description: 'Sentinel-1B SAR synthetic aperture radar swath assimilated into drift model.',
+    description: 'Sentinel-1 SAR synthetic aperture radar swath assimilated into drift model.',
     resolved: false,
   },
 ];
