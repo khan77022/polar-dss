@@ -1,5 +1,6 @@
 /** Typed boundary between the Vite UI and the FastAPI public contract. */
-export const useBackend = import.meta.env.VITE_USE_BACKEND === 'true';
+const backendFlag = import.meta.env.VITE_USE_BACKEND;
+export const useBackend = backendFlag === undefined ? true : backendFlag === 'true';
 export const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
 export class BackendApiError extends Error {

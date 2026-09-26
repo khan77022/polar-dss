@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     cors_origins: list[AnyHttpUrl | str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:5173",
             "http://localhost:8080",
             "https://id-preview--a2507222-fe4f-45cf-aff3-6aa8a1bd715a.lovable.app",
         ]
