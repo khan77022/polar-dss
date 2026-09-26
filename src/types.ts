@@ -139,7 +139,7 @@ export interface SeaIceGridPoint extends LatLon {
   iceThicknessM: number;
 }
 
-export type MapSector = 'peninsula' | 'indian-sector' | 'all-antarctica';
+export type MapSector = 'indian-sector' | 'all-antarctica';
 
 export interface UserSession {
   id: string;

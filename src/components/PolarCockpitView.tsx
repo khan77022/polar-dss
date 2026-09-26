@@ -67,14 +67,14 @@ export const PolarCockpitView: React.FC = () => {
   // Core System State
   const [vessel] = useState<Vessel>(RESEARCH_VESSEL);
   const [icebergs] = useState<Iceberg[]>(ICEBERGS);
-  const [selectedIcebergId, setSelectedIcebergId] = useState<string>('D28');
+  const [selectedIcebergId, setSelectedIcebergId] = useState<string>('A68A');
 
   // Timeline Step (0 = Current +0h, 1 = +6h, 2 = +12h, 3 = +24h [Conflict Window], 4 = +48h)
   const [timelineStep, setTimelineStep] = useState<number>(3);
 
   // Active Route Selection: 'route-original' | 'route-rerouted' | 'route-safety'
   const [selectedRouteId, setSelectedRouteId] = useState<string>('route-original');
-  const [destination, setDestination] = useState<string>('Maitri Station (Schirmacher Oasis, 70°S 11°E)');
+  const [destination, setDestination] = useState<string>('Maitri Research Base (Queen Maud Land)');
   const [objective, setObjective] = useState<'balanced' | 'shortest' | 'safety'>('balanced');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
 
@@ -90,23 +90,6 @@ export const PolarCockpitView: React.FC = () => {
 
   // Toast notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Live countdown timer for "LAST SAFE DEPARTURE" (ticks every second)
-  const [countdownSeconds, setCountdownSeconds] = useState<number>(9 * 3600 + 42 * 60 + 18); // 09:42:18
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCountdownSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatCountdown = (totalSec: number) => {
-    const hrs = Math.floor(totalSec / 3600);
-    const mins = Math.floor((totalSec % 3600) / 60);
-    const secs = totalSec % 60;
-    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -132,14 +115,14 @@ export const PolarCockpitView: React.FC = () => {
     setTimeout(() => {
       setIsAnalyzing(false);
       setSelectedRouteId('route-rerouted');
-      showToast('AI Optimization Complete: Route 2 (Offshore Leads Bypass) Engaged.');
+      showToast('AI Optimization Complete: Route 2 (Western Bypass) Engaged.');
     }, 750);
   };
 
   const handleResetRoute = () => {
     setSelectedRouteId('route-original');
     setTimelineStep(3);
-    showToast('Simulation reset to Route 1 inshore conflict scenario.');
+    showToast('Simulation reset to Route 1 conflict scenario.');
   };
 
   const selectedIceberg = icebergs.find((ib) => ib.id === selectedIcebergId) || icebergs[0];
@@ -155,7 +138,6 @@ export const PolarCockpitView: React.FC = () => {
         isRerouted={isRerouted}
         onRecalculateRoute={handleRecalculateRoute}
         onResetRoute={handleResetRoute}
-        countdownSeconds={countdownSeconds}
         currentDateLabel={currentTimelineInfo.fullDate}
         currentTimeUtc={currentTimelineInfo.timeUtc}
         onToggleChatbot={() => setIsChatbotOpen((prev) => !prev)}
@@ -209,14 +191,14 @@ export const PolarCockpitView: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-white">Route 1 (Direct Inshore)</span>
+                        <span className="font-bold text-xs text-white">Route 1 (Direct Track)</span>
                         <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/30 text-rose-300 border border-rose-500/40 font-mono">
                           CRITICAL HAZARD
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between font-mono">
-                        <span>{ROUTE_ORIGINAL.distanceKm} km • {ROUTE_ORIGINAL.timeHours}h • {ROUTE_ORIGINAL.fuelLiters.toLocaleString()}L</span>
-                        <span className="text-rose-400 font-bold">CPA 3.2 km</span>
+                        <span>380 km • 32h • 1,450L</span>
+                        <span className="text-rose-400 font-bold">CPA 4.8 km</span>
                       </div>
                     </button>
 
@@ -231,7 +213,7 @@ export const PolarCockpitView: React.FC = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs text-white">Route 2 (Offshore Leads Bypass)</span>
+                          <span className="font-bold text-xs text-white">Route 2 (Western Bypass)</span>
                           <span className="px-1 py-0.2 rounded text-[8px] font-bold bg-emerald-500 text-slate-950">AI CHOICE</span>
                         </div>
                         <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-mono">
@@ -239,7 +221,7 @@ export const PolarCockpitView: React.FC = () => {
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between font-mono">
-                        <span>{ROUTE_REROUTED.distanceKm} km • {ROUTE_REROUTED.timeHours}h • {ROUTE_REROUTED.fuelLiters.toLocaleString()}L</span>
+                        <span>420 km • 36h • 1,180L</span>
                         <span className="text-emerald-400 font-bold">CPA 38.5 km</span>
                       </div>
                     </button>
@@ -254,13 +236,13 @@ export const PolarCockpitView: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-white">Route 3 (Max Safety Deep Ocean)</span>
+                        <span className="font-bold text-xs text-white">Route 3 (Max Safety Offshore)</span>
                         <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-500/30 text-sky-300 border border-sky-500/40 font-mono">
                           DEEP OCEAN
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between font-mono">
-                        <span>{ROUTE_MAX_SAFETY.distanceKm} km • {ROUTE_MAX_SAFETY.timeHours}h • {ROUTE_MAX_SAFETY.fuelLiters.toLocaleString()}L</span>
+                        <span>510 km • 44h • 1,300L</span>
                         <span className="text-sky-300 font-bold">CPA &gt;120 km</span>
                       </div>
                     </button>
@@ -366,7 +348,7 @@ export const PolarCockpitView: React.FC = () => {
                         <span className="text-[9px] text-rose-400">08:30 UTC</span>
                       </div>
                       <p className="text-[10px] text-slate-300 mt-0.5 leading-tight">
-                        Weddell gyre compressive front has forced ice edge 14 km NW toward Bransfield Strait.
+                        Coastal gyre compressive front has forced marginal ice edge northward along the shelf.
                       </p>
                     </div>
 
@@ -398,7 +380,7 @@ export const PolarCockpitView: React.FC = () => {
                       className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer transition-colors"
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>{hasConflict ? 'Bypass D28' : 'Reset Route'}</span>
+                      <span>{hasConflict ? 'Bypass A68A' : 'Reset Route'}</span>
                     </button>
 
                     <button
@@ -428,10 +410,11 @@ export const PolarCockpitView: React.FC = () => {
           {!leftPanelOpen && (
             <button
               onClick={() => setLeftPanelOpen(true)}
-              className="absolute left-2 top-2 z-20 p-2 rounded-lg bg-[#0b1424]/90 border border-slate-700 text-slate-300 hover:text-white shadow-xl cursor-pointer backdrop-blur-md"
+              className="absolute left-3 top-3 z-40 flex items-center gap-2 px-3 py-2 rounded-lg bg-[#0b1424]/95 border border-cyan-500/60 text-cyan-300 hover:text-white hover:bg-cyan-900/60 shadow-2xl cursor-pointer backdrop-blur-md transition-all font-mono text-xs font-bold ring-1 ring-cyan-500/40"
               title="Open Tactical Controls"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 text-cyan-400" />
+              <span>TACTICAL CONTROLS</span>
             </button>
           )}
 
@@ -527,35 +510,37 @@ export const PolarCockpitView: React.FC = () => {
               </div>
 
               <div className="p-3 space-y-3.5 text-xs">
-                {/* 1. LAST SAFE DEPARTURE CARD (Prominent DSS Feature) */}
+                {/* 1. CORRIDOR OPERATIONAL CLEARANCE CARD */}
                 <div className="bg-gradient-to-br from-slate-950 via-[#0d1c33] to-[#0a182e] border border-cyan-500/40 rounded-xl p-3.5 shadow-xl relative overflow-hidden">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-                      <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                      Last Safe Departure Window
+                      <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                      Corridor Operational Status
                     </span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                      PASSAGE CLOSING
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      TRANSIT CLEARANCE
                     </span>
                   </div>
 
                   <div className="my-2.5 flex items-baseline justify-between">
                     <div>
-                      <div className="text-xs text-slate-400 font-mono">LATEST DEPARTURE</div>
+                      <div className="text-xs text-slate-400 font-mono">ACTIVE CORRIDOR</div>
                       <div className="text-base font-extrabold text-white font-mono">
-                        20 Sep 2026 • 18:30 UTC
+                        {isRerouted ? 'Route 2 (Western Bypass)' : 'Route 1 (Direct Track)'}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px] text-slate-400 font-mono">DEPARTURE COUNTDOWN</div>
-                      <div className="text-sm font-bold font-mono text-amber-400">
-                        {formatCountdown(countdownSeconds)}
+                      <div className="text-[10px] text-slate-400 font-mono">PASSAGE CLEARANCE</div>
+                      <div className="text-sm font-bold font-mono text-emerald-400">
+                        {isRerouted ? 'OPTIMAL (SAFE)' : 'ADVISORY ACTIVE'}
                       </div>
                     </div>
                   </div>
 
                   <p className="text-[11px] text-slate-300 leading-snug">
-                    <strong>Closure Trigger:</strong> Tabular megaberg D28 northwest drift (1.4 kts) coupled with 74% fast-ice pressure ridge convergence will close the inshore transit corridor.
+                    {isRerouted
+                      ? 'Western bypass clears iceberg drift corridors and remains in navigable leads (<35% sea ice conc).'
+                      : 'Direct track convergence detected. Engage Route 2 Western Bypass to avoid heavy compressive pack ice.'}
                   </p>
                 </div>
 
@@ -574,7 +559,7 @@ export const PolarCockpitView: React.FC = () => {
                   <div className="space-y-1.5 text-[11px] text-slate-300 bg-slate-950/70 p-2.5 rounded-lg border border-slate-800">
                     <div className="flex justify-between items-center font-mono">
                       <span className="text-slate-400">Primary Safe Exit:</span>
-                      <strong className="text-white">Bearing 000° (Open Ocean Leads)</strong>
+                      <strong className="text-white">Bearing 295° (Drake Passage)</strong>
                     </div>
                     <div className="flex justify-between items-center font-mono">
                       <span className="text-slate-400">Hull Ice Resistance:</span>
@@ -582,7 +567,7 @@ export const PolarCockpitView: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center font-mono">
                       <span className="text-slate-400">Vanguard Scout Confirm:</span>
-                      <strong className="text-cyan-300">RV Polar Vanguard (Navigable Leads)</strong>
+                      <strong className="text-cyan-300">PRV Sagar Dhruv (Clear Leads)</strong>
                     </div>
                   </div>
                 </div>
@@ -618,7 +603,7 @@ export const PolarCockpitView: React.FC = () => {
 
                   {hasConflict && (
                     <div className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-600/70 text-[11px] text-rose-200 font-medium">
-                      ⚠️ <strong>Future Route Conflict:</strong> Ice conditions expected to deteriorate along inshore Route 1 due to D28 pressure ridge. Engagement of Route 2 (Offshore Leads Bypass) recommended.
+                      ⚠️ <strong>Future Route Conflict:</strong> Ice conditions expected to deteriorate along Route 1 before vessel estimated arrival. Engagement of Route 2 recommended.
                     </div>
                   )}
                 </div>
@@ -637,42 +622,42 @@ export const PolarCockpitView: React.FC = () => {
                     {/* Route 1 summary */}
                     <div className={`p-2 rounded-lg border ${selectedRouteId === 'route-original' ? 'bg-rose-950/50 border-rose-500/80' : 'bg-slate-900/60 border-slate-800'}`}>
                       <div className="flex justify-between items-center font-bold">
-                        <span className="text-white">Route 1 (Direct Inshore)</span>
-                        <span className="text-rose-400 font-mono">{ROUTE_ORIGINAL.distanceKm} km • {ROUTE_ORIGINAL.fuelLiters.toLocaleString()} L</span>
+                        <span className="text-white">Route 1 (Direct)</span>
+                        <span className="text-rose-400 font-mono">380 km • 1,450 L Fuel</span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-1 flex justify-between font-mono">
-                        <span>Fast Ice Drag: 72%</span>
-                        <span className="text-rose-400 font-bold">D28 CPA: 3.2 km (UNSAFE)</span>
+                        <span>Pack Ice Drag: 65%</span>
+                        <span className="text-rose-400 font-bold">A68A CPA: 4.8 km (UNSAFE)</span>
                       </div>
                     </div>
 
                     {/* Route 2 summary */}
                     <div className={`p-2 rounded-lg border ${selectedRouteId === 'route-rerouted' ? 'bg-emerald-950/50 border-emerald-500/80' : 'bg-slate-900/60 border-slate-800'}`}>
                       <div className="flex justify-between items-center font-bold">
-                        <span className="text-emerald-300">Route 2 (Offshore Leads Bypass)</span>
-                        <span className="text-emerald-400 font-mono">{ROUTE_REROUTED.distanceKm} km • {ROUTE_REROUTED.fuelLiters.toLocaleString()} L</span>
+                        <span className="text-emerald-300">Route 2 (AI Western Bypass)</span>
+                        <span className="text-emerald-400 font-mono">420 km • 1,180 L Fuel</span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-1 flex justify-between font-mono">
-                        <span className="text-emerald-400 font-semibold">Saves 2,900 L Fuel</span>
-                        <span className="text-emerald-400 font-bold">D28 CPA: 38.5 km (SAFE)</span>
+                        <span className="text-emerald-400 font-semibold">Saves 270L Fuel</span>
+                        <span className="text-emerald-400 font-bold">A68A CPA: 38.5 km (SAFE)</span>
                       </div>
                     </div>
 
                     {/* Route 3 summary */}
                     <div className={`p-2 rounded-lg border ${selectedRouteId === 'route-safety' ? 'bg-sky-950/50 border-sky-500/80' : 'bg-slate-900/60 border-slate-800'}`}>
                       <div className="flex justify-between items-center font-bold">
-                        <span className="text-sky-300">Route 3 (Max Safety Deep Ocean)</span>
-                        <span className="text-sky-400 font-mono">{ROUTE_MAX_SAFETY.distanceKm} km • {ROUTE_MAX_SAFETY.fuelLiters.toLocaleString()} L</span>
+                        <span className="text-sky-300">Route 3 (Max Safety Offshore)</span>
+                        <span className="text-sky-400 font-mono">510 km • 1,300 L Fuel</span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-1 flex justify-between font-mono">
                         <span>Open Ocean: 100%</span>
-                        <span className="text-sky-300 font-bold">D28 CPA: &gt;120 km (CLEAR)</span>
+                        <span className="text-sky-300 font-bold">A68A CPA: &gt;120 km (CLEAR)</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-[10px] text-slate-300 leading-snug">
-                    <strong>Explainable AI Insight:</strong> Route 2 is 140 km longer but consumes 2,900 L less fuel because cruising open leads eliminates heavy coastal fast-ice hull resistance.
+                    <strong>Explainable AI Insight:</strong> Route 2 is 40 km longer but consumes 270 L less fuel because cruising open leads eliminates the 195 L/h heavy pack-ice drag penalty.
                   </div>
                 </div>
 
@@ -694,7 +679,7 @@ export const PolarCockpitView: React.FC = () => {
                       <span className="text-cyan-400">MV Vasiliy Golovnin</span>
                     </div>
                     <p className="text-[10px] text-slate-400">
-                      Encountered identical spring pack convergence off Enderby Land with 1.4 kt tabular iceberg drift. Direct inshore route caused 72-hour besetting; offshore leads bypass transited safely with zero hull impact.
+                      Encountered identical spring pack convergence in Bransfield Strait with 1.5 kt iceberg drift. Direct route resulted in 72-hour besetting; Western bypass transited safely with zero hull impact.
                     </p>
                     <div className="text-[10px] text-emerald-400 font-semibold pt-1 border-t border-slate-800 font-mono">
                       ✓ Operational Lesson: Commit to Route 2 early before corridor narrows.
@@ -712,7 +697,7 @@ export const PolarCockpitView: React.FC = () => {
                     <span className="text-[10px] font-mono text-amber-400">Epistemic Error</span>
                   </div>
                   <p className="text-[10px] text-slate-300 leading-snug">
-                    ⚠ <strong>Cosmonaut Sea Zone:</strong> Sentinel-1 SAR pass affected by cloud radar shadow. Trajectory uncertainty envelope expands by ±8.4 km beyond +24h. Precautionary watch advised.
+                    ⚠ <strong>Outer Shelf Zone:</strong> Sentinel-1 SAR pass affected by cloud radar shadow. Trajectory uncertainty envelope expands by ±8.4 km beyond +24h. Recommend precautionary speed reduction.
                   </p>
                 </div>
               </div>

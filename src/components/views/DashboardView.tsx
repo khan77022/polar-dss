@@ -159,7 +159,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Antarctic Geographic Overview
             </span>
             <span className="text-xs text-slate-500 font-mono">
-              Sector: Weddell Sea / Peninsula
+              Sector: Indian Antarctic (Maitri & Bharati)
             </span>
           </div>
 

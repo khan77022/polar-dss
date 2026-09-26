@@ -31,7 +31,7 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
   timelineStep: initialTimelineStep,
   onNavigateToCockpit,
 }) => {
-  const [region, setRegion] = useState<string>('Weddell Sea & Bransfield Strait');
+  const [region, setRegion] = useState<string>('Prydz Bay / Larsemann Hills');
   const [forecastHorizon, setForecastHorizon] = useState<string>('+24h');
   const [localStep, setLocalStep] = useState<number>(3);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -52,8 +52,8 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
   > = {
     Current: { meanConcentration: '44%', risk: 'Low', confidence: 'Observed (98%)', iceEdgeTrend: 'Stable' },
     '+6h': { meanConcentration: '49%', risk: 'Low', confidence: 'ConvLSTM (95%)', iceEdgeTrend: 'Slow northward advance' },
-    '+12h': { meanConcentration: '55%', risk: 'Medium', confidence: 'ConvLSTM (91%)', iceEdgeTrend: 'Bransfield leads narrowing' },
-    '+24h': { meanConcentration: '64%', risk: 'Medium', confidence: 'ConvLSTM (87%)', iceEdgeTrend: 'High pack ice advancing from Weddell' },
+    '+12h': { meanConcentration: '55%', risk: 'Medium', confidence: 'ConvLSTM (91%)', iceEdgeTrend: 'Coastal leads narrowing' },
+    '+24h': { meanConcentration: '64%', risk: 'Medium', confidence: 'ConvLSTM (87%)', iceEdgeTrend: 'High pack ice advancing from shelf' },
     '+48h': { meanConcentration: '73%', risk: 'High', confidence: 'ConvLSTM (82%)', iceEdgeTrend: 'Pack convergence closing eastern channel' },
   };
 
@@ -132,10 +132,10 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
                 onChange={(e) => setRegion(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white shadow-inner focus:outline-hidden focus:ring-2 focus:ring-cyan-500 cursor-pointer"
               >
-                <option value="Weddell Sea & Bransfield Strait">Weddell Sea & Bransfield Strait (Peninsula)</option>
-                <option value="Bellingshausen Sea & Marguerite Bay">Bellingshausen Sea & Marguerite Bay</option>
                 <option value="Prydz Bay / Larsemann Hills">Prydz Bay / Larsemann Hills (Bharati Station)</option>
                 <option value="Queen Maud Land / India Bay">Queen Maud Land / India Bay (Maitri Base)</option>
+                <option value="Amery Ice Shelf Marginal Sea">Amery Ice Shelf Marginal Sea (D28 Calving Zone)</option>
+                <option value="Princess Astrid Coast Passage">Princess Astrid Coast Fast-Ice Passage</option>
               </select>
             </div>
 

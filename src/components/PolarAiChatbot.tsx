@@ -35,7 +35,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     id: 'welcome-1',
     sender: 'assistant',
     timestamp: '14:30 UTC',
-    text: 'Greetings, Captain. I am **POLAR-AI**, your tactical navigation copilot for high-latitude polar transit operations between **Bharati Station** (76°E) and **Maitri Station** (11°E).\n\nI continuously monitor the **ConvLSTM sea-ice forecasts**, **iceberg drift corridors (including tabular megaberg D28)**, and live **V-PIREPs from vanguard vessels ahead** (RV Polar Vanguard & ORV Ocean Surveyor). How can I assist your watch today?',
+    text: 'Namaste! I am **ध्रुव-AI (Dhruv Navigator)**, your polar tactical navigation copilot for the 44th Indian Scientific Expedition to Antarctica (NCPOR / MoES).\n\nI continuously monitor the **ConvLSTM sea-ice forecasts**, **physics-informed iceberg drift corridors**, and live **V-PIREPs from vanguard vessels ahead** (PRV Sagar Dhruv & ORV Sagar Kanya). How can I assist your watch today?',
   },
 ];
 
@@ -83,19 +83,19 @@ export const PolarAiChatbot: React.FC<PolarAiChatbotProps> = ({
   // Quick Action Prompts
   const quickPrompts = [
     {
-      label: '⚠️ Assess D28 Threat & Bypass',
-      query: 'Evaluate the collision risk of tabular iceberg D28 on Route 1 and provide the recommended bypass.',
+      label: '⚠️ Assess A68A Threat & Bypass',
+      query: 'Evaluate the collision risk of iceberg A68A on Route 1 and provide the recommended bypass.',
     },
     {
       label: '🚢 Vessels Ahead Intel (V-PIREP)',
-      query: 'What are RV Polar Vanguard and other scout vessels ahead reporting about ice and leads on our route?',
+      query: 'What are PRV Sagar Dhruv and other scout vessels ahead reporting about ice and leads on our route?',
     },
     {
       label: '⛽ Route 1 vs 2 Fuel & Safety',
-      query: 'Compare the fuel burn, time, and safety trade-offs between Route 1 (Direct Inshore) and Route 2 (Offshore Leads Bypass).',
+      query: 'Compare the fuel burn, time, and safety trade-offs between Route 1 (Direct) and Route 2 (Western Bypass).',
     },
     {
-      label: '📍 Antarctic Bases Status',
+      label: '🇮🇳 Indian Bases Status',
       query: 'What are the current logistics and sea-ice conditions at Bharati and Maitri research stations?',
     },
     {
@@ -125,7 +125,7 @@ export const PolarAiChatbot: React.FC<PolarAiChatbotProps> = ({
 - **Hazard**: Tabular Megaberg **A68A** (${icebergs[0]?.dimensionsKm.length} km × ${icebergs[0]?.dimensionsKm.width} km, keel depth ~180m).
 - **Conflict Window**: **21 Sep 2026 • 14:00 UTC** (+72h projection).
 - **CPA (Closest Point of Approach)**: **4.8 km** — dangerously violates the 15 km NCPOR polar convoy safety buffer.
-- **Physics Drift Analysis**: Trajectory driven by 1.4 kts north-westerly Weddell Sea outflow currents and Coriolis deflection.
+- **Physics Drift Analysis**: Trajectory driven by 1.4 kts north-westerly coastal outflow currents and Coriolis deflection.
 - **Tactical Recommendation**: **Immediately engage Route 2 (Western Bypass)**. This adds only +35 km / +4.2h transit, saves 270L fuel by avoiding heavy brash ice drag, and eliminates collision risk entirely.`,
           actionTag: 'reroute',
           actionLabel: '⚡ Engage Route 2 Western Bypass Now',
@@ -336,7 +336,7 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
             ? 'bg-slate-900 text-white border border-slate-700'
             : 'bg-gradient-to-r from-blue-700 via-sky-600 to-cyan-600 text-white hover:shadow-2xl hover:scale-105 border border-sky-300/40'
         }`}
-        title="Open POLAR-AI Tactical Navigation Assistant"
+        title="Open ध्रुव-AI Polar Navigation Assistant"
       >
         <div className="relative">
           <Bot className="w-5 h-5 text-white" />
@@ -345,9 +345,9 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
         </div>
         <div className="text-left font-sans">
           <div className="text-xs font-bold leading-tight flex items-center gap-1.5">
-            <span>POLAR-AI Copilot</span>
+            <span>ध्रुव-AI Copilot</span>
             <span className="px-1 py-0.2 rounded bg-sky-900/60 text-[9px] text-sky-200 border border-sky-400/40 font-mono">
-              PC3
+              ISEA-44
             </span>
           </div>
           <div className="text-[10px] text-sky-100/90 leading-tight">
@@ -370,15 +370,15 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-xs font-bold text-white tracking-wide font-mono">
-                    POLAR-AI (Tactical Copilot)
+                  <h3 className="text-xs font-bold text-white tracking-wide">
+                    ध्रुव-AI (Dhruv Navigator)
                   </h3>
                   <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                     ONLINE
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-300 flex items-center gap-1.5">
-                  <span>Polar Maritime Intelligence</span>
+                  <span>NCPOR Polar Intelligence</span>
                   <span>•</span>
                   <span>ConvLSTM & Vanguard Fleet Mesh</span>
                 </p>
@@ -443,7 +443,7 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
                 >
                   <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-1 px-1">
                     <span className="font-semibold text-slate-500">
-                      {isAssistant ? 'POLAR-AI' : 'Watch Officer'}
+                      {isAssistant ? 'ध्रुव-AI' : 'Watch Officer'}
                     </span>
                     <span>•</span>
                     <span>{m.timestamp}</span>

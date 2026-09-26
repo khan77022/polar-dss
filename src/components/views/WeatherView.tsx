@@ -151,7 +151,7 @@ export const WeatherView: React.FC<WeatherViewProps> = ({ onNavigateToCockpit })
 
       {/* 4. Station Reference Note */}
       <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl text-xs text-slate-400 flex items-center justify-between font-mono">
-        <span>Station Observation Sector: <strong className="text-slate-200">Bransfield Strait & Weddell Margin</strong></span>
+        <span>Station Observation Sector: <strong className="text-slate-200">Indian Antarctic Coastal Sector & Prydz Bay</strong></span>
         <span className="text-cyan-400">Station ID: WMO-89062 • Rotated 18 Sep 14:00 UTC</span>
       </div>
     </div>

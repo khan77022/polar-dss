@@ -286,8 +286,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                       <option value="East Antarctica Marine Transect (Prydz Bay)">
                         East Antarctica Marine Transect
                       </option>
-                      <option value="Weddell Sea & Peninsula Collaborative Corridor">
-                        Weddell Sea & Peninsula Corridor
+                      <option value="Queen Maud Land & India Bay Supply Run">
+                        Queen Maud Land & India Bay Corridor
                       </option>
                     </select>
                   </div>

@@ -181,7 +181,7 @@ export const IcebergTrackingView: React.FC<IcebergTrackingViewProps> = ({
             Direction: {currentBerg.driftDirectionDeg}° (NW Northwest)
           </div>
           <p className="text-[10px] text-slate-400 mt-2 leading-tight">
-            Driven by Weddell Sea cyclonic gyre current (0.6 kts) + katabatic surface winds (20.5 kts).
+            Driven by Antarctic coastal current (0.6 kts) + katabatic surface winds (20.5 kts).
           </p>
         </div>
 

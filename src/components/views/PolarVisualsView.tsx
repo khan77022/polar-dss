@@ -129,7 +129,7 @@ export const PolarVisualsView: React.FC<PolarVisualsViewProps> = ({
       driftVector: '340° (NNW) at 0.9 knots',
       threatRating: 'Monitored (Clear of Route 2 Western Corridor)',
       imageUrl: 'https://images.unsplash.com/photo-1548232979-6c557ee14752?auto=format&fit=crop&w=1200&q=80',
-      physicsNote: 'Trapped in the outer Weddell Sea cyclonic gyre. Sentinel-1 SAR interferometry reveals thermal stress fractures along its southern margin.',
+      physicsNote: 'Trapped in the outer Southern Ocean cyclonic drift. Sentinel-1 SAR interferometry reveals thermal stress fractures along its southern margin.',
     },
     {
       id: 'D28',
