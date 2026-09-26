@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Brain,
   Layers,
@@ -9,13 +9,30 @@ import {
   LineChart,
   ArrowLeft,
   Sparkles,
+  ShieldAlert,
 } from 'lucide-react';
+import { polarApi, useBackend, ModelMetaDto } from '../../api/client';
+import { provenanceBadgeClass, provenanceBadgeLabel } from '../../api/hooks';
 
 interface ModelPerformanceViewProps {
   onNavigateToCockpit?: () => void;
 }
 
 export const ModelPerformanceView: React.FC<ModelPerformanceViewProps> = ({ onNavigateToCockpit }) => {
+  const [models, setModels] = useState<ModelMetaDto[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!useBackend) return;
+    setLoading(true);
+    polarApi.models()
+      .then((res) => {
+        if (res?.items) setModels(res.items);
+      })
+      .catch((err) => console.error('Failed to load backend models:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div id="model-performance-view" className="flex-1 flex flex-col p-4 sm:p-6 gap-6 overflow-y-auto max-w-5xl mx-auto w-full bg-[#060b14] text-slate-100">
       {/* 1. Header */}
@@ -50,7 +67,45 @@ export const ModelPerformanceView: React.FC<ModelPerformanceViewProps> = ({ onNa
         </div>
       </div>
 
-      {/* 2. The Two Core Prediction Components */}
+      {/* 2. Registered Backend Model Metadata Registry */}
+      {models.length > 0 && (
+        <div className="bg-[#0b1424] border border-cyan-800/60 rounded-xl p-5 shadow-lg space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-cyan-400" />
+              <span>FastAPI Registered Model Metadata ({models.length} Records)</span>
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/60">
+              LIVE REGISTRY CONTRACT
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {models.map((m) => (
+              <div key={m.id} className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-lg text-xs space-y-2">
+                <div className="flex items-center justify-between font-mono">
+                  <span className="font-bold text-white text-sm">{m.modelName}</span>
+                  <span className="text-[10px] text-cyan-300 px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700">
+                    v{m.modelVersion}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-300 font-mono">
+                  Interface: <span className="text-emerald-400">{m.interfaceType}</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-snug">
+                  {m.limitations}
+                </p>
+                <div className="pt-2 border-t border-slate-900 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                  <span>Input: {Object.keys(m.inputContract || {}).length} params</span>
+                  <span>Output: {Object.keys(m.outputContract || {}).length} fields</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 3. The Two Core Prediction Components */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Component 1: Sea-Ice Forecast */}
         <div className="bg-[#0b1424] border border-slate-800 rounded-xl p-5 shadow-lg space-y-3">
@@ -60,19 +115,19 @@ export const ModelPerformanceView: React.FC<ModelPerformanceViewProps> = ({ onNa
             </div>
             <div>
               <h3 className="text-sm font-bold text-white font-mono">
-                Sea-Ice Forecast: ConvLSTM
+                Sea-Ice Forecast: Numerical & Spatiotemporal Grid
               </h3>
               <p className="text-[11px] text-cyan-400 font-mono">
-                Recurrent Convolutional Spatiotemporal Model
+                Grid-scale ice concentration & lead dynamics
               </p>
             </div>
           </div>
           <p className="text-xs text-slate-300 leading-relaxed">
-            A recurrent convolutional architecture trained on multi-year Sentinel-1 SAR and AMSR2 microwave radiometry to forecast grid-scale sea-ice concentration and navigable leads up to 120 hours ahead with 25 km spatial fidelity.
+            Multi-sensor data integration utilizing SAR and radiometry to track pack-ice convergence, shear zones, and open navigable leads up to 120 hours ahead with 25 km spatial fidelity.
           </p>
           <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-[11px] font-mono">
-            <span className="text-slate-400">Mean RMSE: <strong className="text-emerald-400">4.8%</strong></span>
-            <span className="text-slate-400">Lead Precision: <strong className="text-cyan-300">92.4%</strong></span>
+            <span className="text-slate-400">Status: <strong className="text-emerald-400">Demo / Ingested</strong></span>
+            <span className="text-slate-400">Resolution: <strong className="text-cyan-300">25 km Grid</strong></span>
           </div>
         </div>
 
@@ -84,7 +139,7 @@ export const ModelPerformanceView: React.FC<ModelPerformanceViewProps> = ({ onNa
             </div>
             <div>
               <h3 className="text-sm font-bold text-white font-mono">
-                Iceberg Drift: Physics-Informed Solver
+                Iceberg Drift: Hydrodynamic Momentum Model
               </h3>
               <p className="text-[11px] text-amber-400 font-mono">
                 Coupled Ocean-Atmosphere-Ice Mechanics
@@ -101,7 +156,7 @@ export const ModelPerformanceView: React.FC<ModelPerformanceViewProps> = ({ onNa
         </div>
       </div>
 
-      {/* 3. Prediction Pipeline */}
+      {/* 4. Prediction Pipeline */}
       <div className="bg-[#0b1424] border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
         <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono border-b border-slate-800 pb-2">
           End-to-End Decision Pipeline
@@ -119,10 +174,10 @@ export const ModelPerformanceView: React.FC<ModelPerformanceViewProps> = ({ onNa
 
           <div className="p-3.5 rounded-lg bg-cyan-950/40 border border-cyan-800/50 text-center">
             <div className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider font-mono mb-1">
-              2. Neural Inference
+              2. Forecast Pipeline
             </div>
             <div className="text-xs font-semibold text-cyan-100">
-              ConvLSTM Spatiotemporal Grid Forecast (+6h to +48h)
+              Spatiotemporal Grid Forecast (+6h to +48h)
             </div>
           </div>
 

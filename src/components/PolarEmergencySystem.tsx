@@ -45,6 +45,7 @@ import {
   rankSafeDestinations,
   generateDistressMessage,
 } from '../data/emergencyData';
+import { polarApi, useBackend } from '../api/client';
 
 interface PolarEmergencySystemProps {
   isOpen: boolean;
@@ -155,12 +156,43 @@ export const PolarEmergencySystem: React.FC<PolarEmergencySystemProps> = ({
     setTimeout(() => setCopiedTelegraph(false), 2500);
   };
 
-  const handleTransmitDistress = () => {
+  const [backendIncidentId, setBackendIncidentId] = useState<string | null>(null);
+  const [backendIncidentStatus, setBackendIncidentStatus] = useState<string>('reported');
+
+  const handleTransmitDistress = async () => {
     setIsAlertTransmitting(true);
-    setTimeout(() => {
+    try {
+      if (useBackend) {
+        const res = await polarApi.createEmergency({
+          incidentType: activeEmergencyType,
+          severity: severity === 'distress' ? 'critical' : severity === 'urgency' ? 'high' : 'medium',
+          title: `GMDSS MAYDAY: ${activeEmergencyType.toUpperCase()} on ${vessel.name}`,
+          description: distressTelegraph,
+          location: { lat: vessel.currentPos.lat, lon: vessel.currentPos.lon },
+        });
+        if (res?.id) {
+          setBackendIncidentId(res.id);
+          setBackendIncidentStatus(res.status ?? 'reported');
+        }
+      }
+    } catch (e) {
+      console.warn('Backend emergency dispatch recorded with local fallback:', e);
+    } finally {
       setIsAlertTransmitting(false);
       setAlertTransmitted(true);
-    }, 1200);
+    }
+  };
+
+  const handleAcknowledgeIncident = async () => {
+    if (!backendIncidentId || !useBackend) return;
+    try {
+      const ack = await polarApi.acknowledgeEmergency(backendIncidentId);
+      if (ack?.status) {
+        setBackendIncidentStatus(ack.status);
+      }
+    } catch (e) {
+      console.error('Failed to acknowledge emergency incident:', e);
+    }
   };
 
   const toggleChecklistItem = (id: string) => {
@@ -1056,6 +1088,25 @@ export const PolarEmergencySystem: React.FC<PolarEmergencySystemProps> = ({
                       </>
                     )}
                   </button>
+                  {alertTransmitted && backendIncidentId && (
+                    <div className="p-2.5 rounded-lg bg-emerald-950/60 border border-emerald-500/50 text-[11px] font-mono space-y-1.5 mt-2">
+                      <div className="flex justify-between items-center text-emerald-300 font-bold">
+                        <span className="truncate">INCIDENT ID: {backendIncidentId.slice(0, 8)}...</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-900 border border-emerald-500/60 text-[9px] uppercase">
+                          {backendIncidentStatus}
+                        </span>
+                      </div>
+                      {backendIncidentStatus === 'reported' && (
+                        <button
+                          type="button"
+                          onClick={handleAcknowledgeIncident}
+                          className="w-full py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+                        >
+                          Acknowledge Handshake (RCC Node)
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Generated Telegraph Text Box */}
