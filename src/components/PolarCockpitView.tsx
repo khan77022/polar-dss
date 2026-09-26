@@ -61,14 +61,20 @@ import {
   TIMELINE_STEPS,
   AHEAD_VESSELS,
 } from '../data/polarData';
+import { BackendStatus, useBackendHealth } from './BackendStatus';
+import { polarApi, useBackend } from '../api/client';
+import { icebergFromDto, routeFromDto } from '../api/adapters';
 
 export const PolarCockpitView: React.FC = () => {
+  const backendOnline = useBackendHealth();
+  const [backendIcebergs, setBackendIcebergs] = useState<Iceberg[] | null>(null);
+  const [backendRoutes, setBackendRoutes] = useState<RouteOption[] | null>(null);
+  const [backendDataError, setBackendDataError] = useState<string | null>(null);
   // Navigation Bar State: default to 'cockpit'
   const [currentPage, setCurrentPage] = useState<NavPage>('cockpit');
 
   // Core System State
   const [vessel] = useState<Vessel>(RESEARCH_VESSEL);
-  const [icebergs] = useState<Iceberg[]>(ICEBERGS);
   const [selectedIcebergId, setSelectedIcebergId] = useState<string>('A68A');
 
   // Timeline Step (0 = Current +0h, 1 = +6h, 2 = +12h, 3 = +24h [Conflict Window], 4 = +48h)
@@ -93,6 +99,40 @@ export const PolarCockpitView: React.FC = () => {
   // Toast notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Live countdown timer for "LAST SAFE DEPARTURE" (ticks every second)
+  const [countdownSeconds, setCountdownSeconds] = useState<number>(9 * 3600 + 42 * 60 + 18); // 09:42:18
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdownSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!useBackend || backendOnline !== true) return;
+    let active = true;
+    Promise.all([polarApi.icebergs(), polarApi.routes()])
+      .then(([icebergsResponse, routesResponse]) => {
+        if (!active) return;
+        const nextIcebergs = icebergsResponse.items.map(icebergFromDto);
+        setBackendIcebergs(nextIcebergs);
+        setBackendRoutes(routesResponse.items.map(routeFromDto));
+        if (nextIcebergs.length > 0) setSelectedIcebergId((current) => nextIcebergs.some((iceberg) => iceberg.id === current) ? current : nextIcebergs[0].id);
+      })
+      .catch((error: unknown) => active && setBackendDataError(error instanceof Error ? error.message : 'Invalid backend response'));
+    return () => { active = false; };
+  }, [backendOnline]);
+
+  const icebergs = useBackend ? backendIcebergs ?? [] : ICEBERGS;
+
+  const formatCountdown = (totalSec: number) => {
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -108,12 +148,16 @@ export const PolarCockpitView: React.FC = () => {
   const [emergencyRoute, setEmergencyRoute] = useState<RouteOption | null>(null);
 
   // Derive active route object
-  const currentRoute: RouteOption =
+  const mockCurrentRoute: RouteOption =
     selectedRouteId === 'route-rerouted'
       ? ROUTE_REROUTED
       : selectedRouteId === 'route-safety'
       ? ROUTE_MAX_SAFETY
       : ROUTE_ORIGINAL;
+
+  // The backend currently seeds one deterministic route.  It is rendered as-is
+  // rather than substituted with a visually similar local route.
+  const currentRoute: RouteOption = useBackend && backendRoutes?.[0] ? backendRoutes[0] : mockCurrentRoute;
 
   const isRerouted = selectedRouteId === 'route-rerouted';
   const hasConflict = selectedRouteId === 'route-original';
@@ -151,6 +195,13 @@ export const PolarCockpitView: React.FC = () => {
   const selectedIceberg = icebergs.find((ib) => ib.id === selectedIcebergId) || icebergs[0];
   const currentTimelineInfo = TIMELINE_STEPS[timelineStep] || TIMELINE_STEPS[0];
 
+  if (useBackend && (backendOnline === false || backendDataError)) {
+    return <main className="flex h-screen items-center justify-center bg-[#060b14] p-6 text-center text-slate-100"><section className="max-w-md rounded-lg border border-rose-800 bg-rose-950/30 p-6"><h1 className="text-lg font-bold">Backend unavailable</h1><p className="mt-2 text-sm text-slate-300">Using demo/mock data is disabled in backend mode. Start the FastAPI backend at the configured VITE_API_BASE_URL and reload.</p></section><BackendStatus online={backendOnline} /></main>;
+  }
+  if (useBackend && (backendOnline === null || backendIcebergs === null || backendRoutes === null)) {
+    return <main className="flex h-screen items-center justify-center bg-[#060b14] p-6 text-center text-slate-100"><section className="max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6"><h1 className="text-lg font-bold">Loading backend scenario</h1><p className="mt-2 text-sm text-slate-300">Fetching icebergs and routes from FastAPI. Local mock data is disabled in backend mode.</p></section><BackendStatus online={backendOnline} /></main>;
+  }
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#060b14] text-slate-100 font-sans select-none relative">
       {/* 1. TOP MULTI-FEATURE NAVIGATION BAR */}
@@ -170,6 +221,7 @@ export const PolarCockpitView: React.FC = () => {
         isEmergencyActive={isEmergencyActive}
         emergencyTypeTitle={EMERGENCY_TYPES[activeEmergencyType].title}
       />
+      <BackendStatus online={backendOnline} />
 
       {/* 2. DEDICATED VIEW ROUTER OR MASTER COCKPIT */}
       {currentPage === 'cockpit' || currentPage === 'dashboard' ? (

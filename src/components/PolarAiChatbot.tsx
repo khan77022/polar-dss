@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ChatMessage, Vessel, Iceberg, RouteOption } from '../types';
 import { AHEAD_VESSELS, INDIAN_POLAR_HUBS } from '../data/polarData';
+import { polarApi, useBackend } from '../api/client';
 
 interface PolarAiChatbotProps {
   vessel: Vessel;
@@ -244,6 +245,12 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
     setIsThinking(true);
 
     try {
+      if (useBackend) {
+        const data = await polarApi.chat(query);
+        setMessages((prev) => [...prev, { id: `assist-${Date.now()}`, sender: 'assistant', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC', text: `${data.answer}\n\nStatus: ${data.dataStatus}. ${data.limitations}` }]);
+        setIsThinking(false);
+        return;
+      }
       // Try to call server-side Gemini API route first
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -285,6 +292,11 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
         }
       }
     } catch (err) {
+      if (useBackend) {
+        setMessages((prev) => [...prev, { id: `assist-${Date.now()}`, sender: 'assistant', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC', text: 'Backend unavailable. Local mock chat is disabled in backend mode.' }]);
+        setIsThinking(false);
+        return;
+      }
       // Server not reachable or Gemini API offline, proceed seamlessly with the built-in polar expert engine
     }
 
