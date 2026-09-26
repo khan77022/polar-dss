@@ -19,7 +19,13 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     version: str = "1.0.0"
     database_url: str = "postgresql+psycopg://polar:polar@localhost:5432/polar_dss"
-    cors_origins: list[AnyHttpUrl | str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: list[AnyHttpUrl | str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://localhost:8080",
+            "https://id-preview--a2507222-fe4f-45cf-aff3-6aa8a1bd715a.lovable.app",
+        ]
+    )
     log_level: str = "INFO"
 
 

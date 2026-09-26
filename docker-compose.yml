@@ -22,7 +22,7 @@ services:
       APP_ENV: development
       API_PREFIX: /api/v1
       DATABASE_URL: postgresql+psycopg://polar:polar@postgres:5432/polar_dss
-      CORS_ORIGINS: '["http://localhost:3000"]'
+      CORS_ORIGINS: '["http://localhost:3000","http://localhost:8080","https://id-preview--a2507222-fe4f-45cf-aff3-6aa8a1bd715a.lovable.app"]'
       LOG_LEVEL: INFO
     ports:
       - "8000:8000"
