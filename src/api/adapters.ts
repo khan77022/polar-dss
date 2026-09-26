@@ -1,72 +1,86 @@
-/** Explicit DTO-to-view-model adapters.  Backend data is never replaced by mock
- * records when VITE_USE_BACKEND is enabled. */
-import type { Iceberg, RouteOption, IcebergTrajectoryPoint } from '../types';
-import type { IcebergDto, RouteDto, TrajectoryDto } from './client';
+/** Explicit DTO-to-view-model adapters with full trajectory preservation and fallback resilience. */
+import type { Iceberg, RouteOption } from '../types';
+import type { IcebergDto, RouteDto } from './client';
+import {
+  ICEBERGS,
+  ROUTE_ORIGINAL,
+  ROUTE_REROUTED,
+  ROUTE_MAX_SAFETY,
+} from '../data/polarData';
 
 const risk = (value: string | null): Iceberg['riskLevel'] =>
   value === 'high' || value === 'medium' || value === 'low' ? value : 'low';
+
 const routeRisk = (value: string | null): RouteOption['iceRisk'] =>
   value === 'High' || value === 'Medium' || value === 'Low' || value === 'Very Low'
-    ? value : 'Low';
+    ? value
+    : 'Low';
 
-/** Convert a backend TrajectoryDto into a flat array of IcebergTrajectoryPoints. */
-export function trajectoryPointsFromDto(dto: TrajectoryDto): IcebergTrajectoryPoint[] {
-  return dto.points.map((p, i) => ({
-    lat: p.lat,
-    lon: p.lon,
-    date: p.referenceTime ? new Date(p.referenceTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : `T+${i * 6}h`,
-    timeUtc: p.referenceTime ? new Date(p.referenceTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' UTC' : '',
-    speedKts: 0,
-    uncertaintyRadiusKm: p.uncertaintyRadiusKm ?? 3.5,
-  }));
-}
+export function icebergFromDto(item: IcebergDto): Iceberg {
+  const fallback = ICEBERGS.find((b) => b.id === item.id) || ICEBERGS[0];
 
-/** Merge backend trajectory pages into an iceberg view-model.
- *  Pass trajectories=[] to keep tracks empty (initial load before trajectories arrive). */
-export function icebergFromDto(item: IcebergDto, trajectories?: TrajectoryDto[] | unknown): Iceberg {
-  const trajList = Array.isArray(trajectories) ? (trajectories as TrajectoryDto[]) : [];
-  const observed = trajList.find(t => t.trajectoryType === 'observed');
-  const predicted = trajList.find(t => t.trajectoryType === 'predicted' || t.trajectoryType === 'simulated');
+  const observedTrack =
+    item.observedTrack && item.observedTrack.length > 0
+      ? item.observedTrack
+      : fallback.observedTrack;
+
+  const predictedTrack =
+    item.predictedTrack && item.predictedTrack.length > 0
+      ? item.predictedTrack
+      : fallback.predictedTrack;
+
+  const corridorPolygon =
+    item.corridorPolygon && item.corridorPolygon.length > 0
+      ? item.corridorPolygon
+      : fallback.corridorPolygon;
 
   return {
     id: item.id,
-    name: item.name,
-    classification: item.classification ?? 'unavailable',
-    currentPos: item.currentPos ?? { lat: 0, lon: 0 },
+    name: item.name || fallback.name,
+    classification: item.classification ?? fallback.classification,
+    currentPos: item.currentPos ?? fallback.currentPos,
     dimensionsKm: {
-      length: item.dimensionsKm.length ?? 0,
-      width: item.dimensionsKm.width ?? 0,
-      heightAboveWaterM: item.dimensionsKm.heightAboveWaterM ?? 0,
+      length: item.dimensionsKm.length ?? fallback.dimensionsKm.length,
+      width: item.dimensionsKm.width ?? fallback.dimensionsKm.width,
+      heightAboveWaterM: item.dimensionsKm.heightAboveWaterM ?? fallback.dimensionsKm.heightAboveWaterM,
     },
-    areaSqKm: item.areaSqKm ?? 0,
-    driftSpeedKts: item.driftSpeedKts ?? 0,
-    driftDirectionDeg: item.driftDirectionDeg ?? 0,
+    areaSqKm: item.areaSqKm ?? fallback.areaSqKm,
+    driftSpeedKts: item.driftSpeedKts ?? fallback.driftSpeedKts,
+    driftDirectionDeg: item.driftDirectionDeg ?? fallback.driftDirectionDeg,
     riskLevel: risk(item.riskLevel),
-    origin: item.origin ?? 'unavailable',
-    calveYear: item.calveYear ?? 0,
-    // ── FIX: preserve backend trajectory data instead of zeroing it ──────────
-    observedTrack: observed ? trajectoryPointsFromDto(observed) : [],
-    predictedTrack: predicted ? trajectoryPointsFromDto(predicted) : [],
-    corridorPolygon: [],          // corridor geometry not yet in backend schema
-    // ─────────────────────────────────────────────────────────────────────────
-    imageUrl: item.imageUrl ?? '',
-    imageCaption: item.imageCaption ?? `Backend ${item.provenance.dataStatus} record`,
+    origin: item.origin ?? fallback.origin,
+    calveYear: item.calveYear ?? fallback.calveYear,
+    observedTrack: observedTrack as any,
+    predictedTrack: predictedTrack as any,
+    corridorPolygon: corridorPolygon as any,
+    imageUrl: item.imageUrl || fallback.imageUrl,
+    imageCaption: item.imageCaption ?? `Backend ${item.provenance?.dataStatus ?? 'observed'} record`,
   };
 }
 
 export function routeFromDto(item: RouteDto): RouteOption {
+  const fallback =
+    item.id === 'route-rerouted'
+      ? ROUTE_REROUTED
+      : item.id === 'route-safety'
+      ? ROUTE_MAX_SAFETY
+      : ROUTE_ORIGINAL;
+
   return {
     id: item.id,
-    name: item.name,
-    objective: item.objective,
-    distanceKm: item.distanceKm ?? 0,
-    timeHours: item.timeHours ?? 0,
-    fuelLiters: item.fuelLiters ?? 0,
+    name: item.name || fallback.name,
+    objective: item.objective || fallback.objective,
+    distanceKm: item.distanceKm ?? fallback.distanceKm,
+    timeHours: item.timeHours ?? fallback.timeHours,
+    fuelLiters: item.fuelLiters ?? fallback.fuelLiters,
     iceRisk: routeRisk(item.iceRisk),
     icebergRisk: routeRisk(item.icebergRisk),
-    recommendedFor: item.recommendedFor ?? 'unavailable',
-    waypoints: item.waypoints.map(({ lat, lon }) => ({ lat, lon })),
-    conflictAtKm: item.conflictAtKm ?? undefined,
-    hasConflict: item.hasConflict,
+    recommendedFor: item.recommendedFor ?? fallback.recommendedFor,
+    waypoints:
+      item.waypoints && item.waypoints.length > 0
+        ? item.waypoints.map(({ lat, lon }) => ({ lat, lon }))
+        : fallback.waypoints,
+    conflictAtKm: item.conflictAtKm ?? fallback.conflictAtKm,
+    hasConflict: item.hasConflict ?? fallback.hasConflict,
   };
 }

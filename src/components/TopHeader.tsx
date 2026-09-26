@@ -50,6 +50,10 @@ const PAGE_TITLES: Record<NavPage, { title: string; subtitle: string }> = {
     title: 'Model Information',
     subtitle: 'Architecture and validation benchmarks for predictive components',
   },
+  visuals: {
+    title: 'Fleet & Iceberg Gallery',
+    subtitle: 'High-resolution optical profiles and technical specifications',
+  },
 };
 
 export const TopHeader: React.FC<TopHeaderProps> = ({

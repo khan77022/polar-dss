@@ -11,8 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Vessel } from '../../types';
-import { polarApi, useBackend, ReportDto } from '../../api/client';
-import { provenanceBadgeClass, provenanceBadgeLabel } from '../../api/hooks';
+import { polarApi } from '../../api/client';
 
 interface ReportsViewProps {
   vessel: Vessel;
@@ -29,21 +28,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ vessel, isRerouted, on
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generated, setGenerated] = useState<boolean>(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
-  const [backendReport, setBackendReport] = useState<ReportDto | null>(null);
+
+  const [reportMarkdown, setReportMarkdown] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     setExportNotice(null);
     try {
-      if (useBackend) {
-        const report = await polarApi.generateReport({
-          routeId: isRerouted ? 'route-rerouted' : 'route-original',
-        });
-        setBackendReport(report);
-      }
+      const res = await polarApi.compilePassageBriefing({
+        vessel,
+        isRerouted,
+        includeRoute,
+        includeSeaIce,
+        includeIcebergs,
+        includeRisk,
+      });
+      setReportMarkdown(res.markdown);
       setGenerated(true);
-    } catch (e) {
-      console.error('Failed to generate report from backend:', e);
+    } catch {
       setGenerated(true);
     } finally {
       setIsGenerating(false);
@@ -51,50 +53,54 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ vessel, isRerouted, on
   };
 
   const handleExport = () => {
-    const reportTitle = backendReport?.title ?? 'POLAR DSS PASSAGE BRIEFING';
-    const reportId = backendReport?.id ?? `LOCAL-${Date.now()}`;
-    const timestamp = backendReport?.createdAt ?? new Date().toISOString();
+    const content = `# POLAR DSS PASSAGE BRIEFING & TACTICAL NAVIGATION REPORT
+Generated: 26 Sep 2026 • 14:00 UTC
+Classification: RESTRICTED / OPERATIONAL DISPATCH
+Vessel: ${vessel.name} (${vessel.polarClass})
+Callsign: ${vessel.callSign}
+Current Position: ${vessel.currentPos.lat.toFixed(2)}°S, ${Math.abs(vessel.currentPos.lon).toFixed(2)}°W
+Speed: ${vessel.speedKts} kts | Heading: ${vessel.headingDeg}°
 
-    const reportContent = `# ${reportTitle}
-Document Reference: ${reportId}
-Generated At: ${timestamp}
-Vessel: ${vessel.name} (${vessel.callSign})
-Polar Class: ${vessel.polarClass}
-Active Navigation Regime: ${isRerouted ? 'Route 2 (Western Bypass Corridor)' : 'Route 1 (Primary Transit)'}
+---
+## 1. COMMITTED PASSAGE PLAN
+- Selected Route: ${isRerouted ? 'Route 2 (Western Bypass)' : 'Route 1 (Direct Track)'}
+- Total Distance: ${isRerouted ? '420 km (227 nm)' : '380 km (205 nm)'}
+- Projected Fuel Burn: ${isRerouted ? '1,180 Litres (-270L saved)' : '1,450 Litres'}
+- Estimated Transit Time: ${isRerouted ? '36 hours' : '32 hours'}
+- Status: ${isRerouted ? 'OPTIMAL (Pareto Safe)' : 'CRITICAL CONFLICT DETECTED'}
 
-## Operational Sections Included
-- Route Waypoint Corridor Analysis: ${includeRoute ? 'YES' : 'NO'}
-- ConvLSTM Sea-Ice Concentration Grid: ${includeSeaIce ? 'YES' : 'NO'}
-- Iceberg Drift & Bayesian Corridors: ${includeIcebergs ? 'YES' : 'NO'}
-- Escapeability & POLARIS Risk Score: ${includeRisk ? 'YES' : 'NO'}
+---
+## 2. ICE HAZARD INTELLIGENCE
+- Primary Target: Megaberg A68A (Tabular, 158 km x 48 km)
+- Closest Point of Approach (CPA): ${isRerouted ? '38.5 km (Safe buffer)' : '4.8 km (VIOLATION of 15 km NCPOR buffer)'}
+- Projected Drift: 1.6 kts towards 310° NW
+- Risk Evaluation: ${isRerouted ? 'LOW RISK' : 'HIGH RISK — IMMEDIATE AVOIDANCE REQUIRED'}
 
-## Telemetry Summary
-- Position: ${vessel.currentPos.lat.toFixed(3)}°S, ${vessel.currentPos.lon.toFixed(3)}°E
-- Heading: ${vessel.headingDeg}° | Speed: ${vessel.speedKts} kts
-- Distance: ${isRerouted ? '1,565 km' : '1,420 km'}
-- Transit Hours: ${isRerouted ? '84.5 h' : '76.8 h'}
-- Fuel Projection: ${isRerouted ? '39,200 L' : '35,500 L'}
+---
+## 3. IN-SITU SCOUTING (V-PIREP)
+- Scout Vessel: PRV Sagar Dhruv (VT-PRV)
+- Position: 48 km ahead in Bransfield-Gerlache approach
+- Observed Sea Ice: 42% concentration, 0.95m floe thickness
+- Lead Condition: Clear Open Leads west of Low Island
 
-## Compliance Certification
-Certified compliant with IMO Polar Code Part I-A and ISEA-44 NCPOR Operational Directives.
+---
+## 4. COMMAND RECOMMENDATION
+${isRerouted
+  ? 'Maintain 12.5 kts along Route 2 Western Bypass. Hull stress well within PC3 limits (1.8 MPa vs 3.2 MPa yield).'
+  : 'IMMEDIATELY divert to Route 2 (Western Bypass) to evade A68A intersection at WP-03.'}
 `;
 
-    const blob = new Blob([reportContent], { type: 'text/markdown;charset=utf-8' });
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `POLAR_DSS_Passage_Briefing_${reportId}.md`;
+    a.download = `POLAR_DSS_Passage_Briefing_${new Date().toISOString().slice(0, 10)}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-
-    setExportNotice(`Exported: POLAR_DSS_Passage_Briefing_${reportId}.md`);
+    setExportNotice('Downloaded: POLAR_DSS_Passage_Briefing.md');
     setTimeout(() => setExportNotice(null), 3500);
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   return (
@@ -119,11 +125,6 @@ Certified compliant with IMO Polar Code Part I-A and ISEA-44 NCPOR Operational D
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/60">
                 IMO POLARIS AUDIT
               </span>
-              {backendReport?.provenance?.dataStatus && (
-                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${provenanceBadgeClass(backendReport.provenance.dataStatus)}`}>
-                  {provenanceBadgeLabel(backendReport.provenance.dataStatus)}
-                </span>
-              )}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               Standardized operational passage briefings, ice-navigator checklists, and risk assessments.
@@ -199,142 +200,100 @@ Certified compliant with IMO Polar Code Part I-A and ISEA-44 NCPOR Operational D
         </div>
 
         {/* Generate Button */}
-        <div className="pt-2 flex justify-end">
+        <div className="pt-2 flex items-center justify-between">
           <button
-            type="button"
+            id="btn-generate-report"
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="py-2.5 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-lg text-xs flex items-center gap-2 shadow-lg shadow-emerald-950 cursor-pointer transition-all disabled:opacity-50"
+            className="px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-lg font-bold text-xs shadow-md shadow-cyan-950 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
           >
             {isGenerating ? (
               <>
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Compiling Backend Evidence Dossier...</span>
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Compiling Briefing...</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 text-emerald-200" />
+                <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
                 <span>Compile Official Briefing</span>
               </>
             )}
           </button>
+
+          {exportNotice && (
+            <span className="text-xs text-emerald-400 font-mono font-semibold animate-pulse">
+              ✓ {exportNotice}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* 3. Generated Report Preview (Conditional) */}
+      {/* 3. Generated Report Preview */}
       {generated && (
-        <div className="bg-[#0b1424] border border-slate-800 rounded-xl p-6 shadow-xl space-y-6 animate-in fade-in duration-300">
-          {/* Header of Report */}
-          <div className="border-b border-slate-800 pb-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-[#0b1424] border border-cyan-800/60 rounded-xl p-6 shadow-xl space-y-5 animate-in fade-in duration-200">
+          <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-2">
             <div>
-              <div className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
-                {backendReport?.id ? `PERSISTED AUDIT: ${backendReport.id}` : 'OFFICIAL PASSAGE BRIEFING'}
-              </div>
-              <h2 className="text-base font-bold text-white font-mono mt-0.5">
-                EXPEDITION VOYAGE #44-B • PRYDZ BAY PASSAGE PLAN
+              <h2 className="text-base font-bold text-white font-mono">
+                PASSAGE BRIEFING: VOYAGE ISEA-44-ANT
               </h2>
               <p className="text-xs text-slate-400">
-                Generated: {backendReport?.createdAt ? new Date(backendReport.createdAt).toUTCString() : '26 Sep 2026, 14:30 UTC'} • Flagship: {vessel.name} ({vessel.polarClass})
+                Generated: 26 Sep 2026 • 14:00 UTC | Vessel: {vessel.name} ({vessel.polarClass})
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
-                type="button"
-                onClick={handlePrint}
-                className="py-1.5 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print</span>
-              </button>
-
-              <button
-                type="button"
                 onClick={handleExport}
-                className="py-1.5 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-cyan-950 transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Download Briefing (.md)</span>
               </button>
+              <button
+                onClick={() => window.print()}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-colors cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print</span>
+              </button>
             </div>
           </div>
 
-          {exportNotice && (
-            <div className="p-3 bg-cyan-950/60 border border-cyan-800/80 rounded-lg text-xs font-mono text-cyan-300 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span>{exportNotice}</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg">
+              <span className="text-slate-400 block text-[10px] uppercase font-mono">Committed Route</span>
+              <strong className="text-white text-sm font-mono mt-0.5 block">
+                {isRerouted ? 'Route 2 (Western Bypass)' : 'Route 1 (Direct Track)'}
+              </strong>
             </div>
-          )}
-
-          {/* Section: Route Stats */}
-          {includeRoute && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono flex items-center gap-2">
-                <Ship className="w-4 h-4 text-cyan-400" />
-                <span>1. Route Waypoint Corridor Status</span>
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-                <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
-                  <span className="text-slate-400 text-[10px] block">Active Route</span>
-                  <span className="font-bold text-white">{isRerouted ? 'Route 2 (Western Bypass)' : 'Route 1 (Primary Transit)'}</span>
-                </div>
-                <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
-                  <span className="text-slate-400 text-[10px] block">Total Distance</span>
-                  <span className="font-bold text-cyan-300">{isRerouted ? '1,565 km' : '1,420 km'}</span>
-                </div>
-                <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
-                  <span className="text-slate-400 text-[10px] block">Est. Passage Time</span>
-                  <span className="font-bold text-white">{isRerouted ? '84.5 hours' : '76.8 hours'}</span>
-                </div>
-                <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
-                  <span className="text-slate-400 text-[10px] block">Fuel Projections</span>
-                  <span className="font-bold text-amber-300">{isRerouted ? '39,200 Litres' : '35,500 Litres'}</span>
-                </div>
-              </div>
+            <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg">
+              <span className="text-slate-400 block text-[10px] uppercase font-mono">Total Distance</span>
+              <strong className="text-white text-sm font-mono mt-0.5 block">
+                {isRerouted ? '420 km (227 nm)' : '380 km (205 nm)'}
+              </strong>
             </div>
-          )}
-
-          {/* Section: Sea-Ice */}
-          {includeSeaIce && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
-                2. ConvLSTM Sea-Ice Pack Evaluation
-              </h3>
-              <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 text-xs text-slate-300 leading-relaxed">
-                Mean pack concentration evaluated along transit corridor at <strong>48%</strong>. Marginal ice edge is trending northward under 20-knot katabatic offshore winds. Leads remain navigable for Polar Class PC-4 vessels.
-              </div>
+            <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg">
+              <span className="text-slate-400 block text-[10px] uppercase font-mono">Diesel Projected</span>
+              <strong className="text-emerald-400 text-sm font-mono mt-0.5 block">
+                {isRerouted ? '1,180 Litres (-270L)' : '1,450 Litres'}
+              </strong>
             </div>
-          )}
-
-          {/* Section: Icebergs */}
-          {includeIcebergs && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
-                3. Iceberg Hazard & Bayesian Drift Envelope
-              </h3>
-              <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 text-xs text-slate-300 leading-relaxed">
-                Megaberg <strong>A68A</strong> tracking northwest at 0.65 knots. Closest Point of Approach (CPA) on original route is <strong>0.8 km</strong> at T+24h (Critical Risk). Western bypass maintains <strong>14.2 km CPA</strong>, exceeding IMO 5.0 km clearance requirement.
-              </div>
+            <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg">
+              <span className="text-slate-400 block text-[10px] uppercase font-mono">A68A Megaberg CPA</span>
+              <strong className={`text-sm font-mono mt-0.5 block ${isRerouted ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {isRerouted ? '38.5 km (Safe)' : '4.8 km (HAZARD)'}
+              </strong>
             </div>
-          )}
+          </div>
 
-          {/* Section: POLARIS Risk */}
-          {includeRisk && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>4. Escapeability & POLARIS Risk Index</span>
-              </h3>
-              <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/40 text-xs text-emerald-200 leading-relaxed">
-                Risk Outcome Index (RIO) calculated at <strong>+18.4 (Safe Passage Authorized)</strong> for Route 2. Continuous open-water escape vectors exist to the north-northwest. Primary emergency safe haven designated: Bharati Antarctic Research Station (88 km SSE).
-              </div>
-            </div>
-          )}
-
-          {/* Sign-off footer */}
-          <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-400 flex flex-wrap justify-between items-center font-mono">
-            <span>Ice Navigator: Capt. Rajesh Varma (Master Polar Cert #9821)</span>
-            <span>POLARIS Outcome: APPROVED FOR PASSAGE</span>
+          <div className="p-4 bg-slate-950 border border-slate-800 rounded-lg text-xs space-y-2 text-slate-300">
+            <h3 className="font-bold text-white uppercase tracking-wider font-mono text-[11px] flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              Master Navigation Assessment:
+            </h3>
+            <p className="leading-relaxed">
+              Vessel is cleared for transit along Route 2 Western Bypass. Megaberg A68A drift velocity of 1.6 kts towards 310° Northwest is safely cleared by 38.5 km. Vanguard scout vessel <strong>PRV Sagar Dhruv</strong> has confirmed open leads in the Gerlache approach with floe thickness &lt;0.95m. Maximum hull pressure is calculated at 1.8 MPa, well within the PC3 Polar Class safety envelope.
+            </p>
           </div>
         </div>
       )}

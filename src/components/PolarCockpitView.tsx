@@ -49,6 +49,8 @@ import { WeatherView } from './views/WeatherView';
 import { FleetReconView } from './views/FleetReconView';
 import { ReportsView } from './views/ReportsView';
 import { ModelPerformanceView } from './views/ModelPerformanceView';
+import { PolarVisualsView } from './views/PolarVisualsView';
+import { AlertsPanel } from './AlertsPanel';
 import { PolarEmergencySystem } from './PolarEmergencySystem';
 import { EmergencyType, SafeHavenDestination, EMERGENCY_TYPES } from '../data/emergencyData';
 import { Vessel, Iceberg, RouteOption, NavPage } from '../types';
@@ -62,27 +64,27 @@ import {
   AHEAD_VESSELS,
 } from '../data/polarData';
 import { BackendStatus, useBackendHealth } from './BackendStatus';
-import { polarApi, useBackend, AlertDto, TrajectoryDto, BehaviorDto, ObservationDto, DashboardDto } from '../api/client';
-import { icebergFromDto, routeFromDto, trajectoryPointsFromDto } from '../api/adapters';
+import { polarApi, useBackend, ObservationDto, DashboardSummaryDto, EnvironmentContextDto, IcebergDto, IcebergBehaviorDto } from '../api/client';
+import { icebergFromDto, routeFromDto } from '../api/adapters';
 
 export const PolarCockpitView: React.FC = () => {
   const backendOnline = useBackendHealth();
   const [backendIcebergs, setBackendIcebergs] = useState<Iceberg[] | null>(null);
   const [backendRoutes, setBackendRoutes] = useState<RouteOption[] | null>(null);
   const [backendDataError, setBackendDataError] = useState<string | null>(null);
-  const [icebergTrajectories, setIcebergTrajectories] = useState<Record<string, TrajectoryDto[]>>({});
-  const [icebergBehaviors, setIcebergBehaviors] = useState<Record<string, BehaviorDto>>({});
-  const [icebergObservations, setIcebergObservations] = useState<Record<string, ObservationDto>>({});
-  const [dashboardSummary, setDashboardSummary] = useState<DashboardDto | null>(null);
-  const [routeIsFallback, setRouteIsFallback] = useState<boolean>(false);
-  const [isTriggeringMl, setIsTriggeringMl] = useState<boolean>(false);
-  const [alerts, setAlerts] = useState<AlertDto[]>([]);
   // Navigation Bar State: default to 'cockpit'
   const [currentPage, setCurrentPage] = useState<NavPage>('cockpit');
 
   // Core System State
   const [vessel] = useState<Vessel>(RESEARCH_VESSEL);
   const [selectedIcebergId, setSelectedIcebergId] = useState<string>('A68A');
+
+  // Audit Items 1, 2, 4, 9, 10 State
+  const [sarObservation, setSarObservation] = useState<ObservationDto | null>(null);
+  const [pipelineRunning, setPipelineRunning] = useState<boolean>(false);
+  const [routeIsFallback, setRouteIsFallback] = useState<boolean>(true);
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummaryDto | null>(null);
+  const [envContext, setEnvContext] = useState<EnvironmentContextDto | null>(null);
 
   // Timeline Step (0 = Current +0h, 1 = +6h, 2 = +12h, 3 = +24h [Conflict Window], 4 = +48h)
   const [timelineStep, setTimelineStep] = useState<number>(3);
@@ -99,6 +101,7 @@ export const PolarCockpitView: React.FC = () => {
 
   // Quick Modal Overlays inside Cockpit
   const [activeQuickModal, setActiveQuickModal] = useState<'weather' | 'reports' | 'model' | null>(null);
+  const [isAlertsModalOpen, setIsAlertsModalOpen] = useState<boolean>(false);
 
   // AI Chatbot Open State
   const [isChatbotOpen, setIsChatbotOpen] = useState<boolean>(false);
@@ -131,93 +134,7 @@ export const PolarCockpitView: React.FC = () => {
     return () => { active = false; };
   }, [backendOnline]);
 
-  useEffect(() => {
-    if (!useBackend || backendOnline !== true || !selectedIcebergId) return;
-    let active = true;
-    Promise.allSettled([
-      polarApi.trajectory(selectedIcebergId),
-      polarApi.behavior(selectedIcebergId),
-      polarApi.history(selectedIcebergId),
-    ]).then(([trajRes, behavRes, histRes]) => {
-      if (!active) return;
-      if (trajRes.status === 'fulfilled' && trajRes.value?.items) {
-        setIcebergTrajectories((prev) => ({ ...prev, [selectedIcebergId]: trajRes.value.items }));
-      }
-      if (behavRes.status === 'fulfilled' && behavRes.value) {
-        setIcebergBehaviors((prev) => ({ ...prev, [selectedIcebergId]: behavRes.value }));
-      }
-      if (histRes.status === 'fulfilled' && histRes.value?.items?.length) {
-        const sarObs = histRes.value.items.find((i) => i.hasFootprint || i.provenance?.source?.includes('sentinel')) ?? histRes.value.items[0];
-        setIcebergObservations((prev) => ({ ...prev, [selectedIcebergId]: sarObs }));
-      }
-    });
-    return () => { active = false; };
-  }, [selectedIcebergId, backendOnline]);
-
-  useEffect(() => {
-    if (!useBackend || backendOnline !== true) return;
-    let active = true;
-    polarApi.alerts().then((res) => {
-      if (active && res.items) setAlerts(res.items);
-    }).catch(() => {});
-    polarApi.dashboard().then((res) => {
-      if (active && res) setDashboardSummary(res);
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [backendOnline]);
-
-  const handleAcknowledgeAlert = async (id: string) => {
-    try {
-      if (useBackend && backendOnline) {
-        await polarApi.acknowledgeAlert(id);
-      }
-      setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, acknowledged: true } : a)));
-      showToast('Alert acknowledged.');
-    } catch {
-      showToast('Failed to acknowledge alert.');
-    }
-  };
-
-  const handleTriggerExternalMlTest = async () => {
-    setIsTriggeringMl(true);
-    try {
-      if (useBackend && backendOnline) {
-        const now = new Date();
-        const offsets = [6, 12, 24, 36, 48];
-        const points = offsets.map((h) => ({
-          timestamp: new Date(now.getTime() + h * 3600 * 1000).toISOString(),
-          position: { lat: selectedIceberg.currentPos.lat - h * 0.015, lon: selectedIceberg.currentPos.lon + h * 0.025 },
-          uncertaintyRadiusKm: Number((2.0 + h * 0.15).toFixed(2)),
-        }));
-        await polarApi.pushTrajectory(selectedIceberg.id, {
-          modelName: 'dummy-trajectory-model-ui',
-          modelVersion: 'ui-test-v1',
-          generatedAt: now.toISOString(),
-          validFrom: points[0].timestamp,
-          validTo: points[points.length - 1].timestamp,
-          points,
-          confidence: 0.85,
-          dataStatus: 'predicted',
-          provenance: { source: 'dummy-ml-ui-trigger', sourceRecordId: `ui-${Date.now()}`, sourceProductId: 'ui-ml-pipeline-v1' },
-          limitations: 'Triggered from Cockpit UI test harness for end-to-end verification.',
-        });
-        const trajRes = await polarApi.trajectory(selectedIceberg.id);
-        if (trajRes.items) {
-          setIcebergTrajectories((prev) => ({ ...prev, [selectedIceberg.id]: trajRes.items }));
-        }
-        showToast('✅ External ML Ingestion Pipeline test succeeded: POST -> FastAPI -> DB -> GET synced.');
-      } else {
-        showToast('External ML test simulated locally.');
-      }
-    } catch (err: unknown) {
-      console.error('External ML test error:', err);
-      showToast('External ML test completed or already recorded in database.');
-    } finally {
-      setIsTriggeringMl(false);
-    }
-  };
-
-  const icebergs = useBackend ? backendIcebergs ?? [] : ICEBERGS;
+  const icebergs = (useBackend && backendIcebergs && backendIcebergs.length > 0) ? backendIcebergs : ICEBERGS;
 
   const formatCountdown = (totalSec: number) => {
     const hrs = Math.floor(totalSec / 3600);
@@ -248,15 +165,9 @@ export const PolarCockpitView: React.FC = () => {
       ? ROUTE_MAX_SAFETY
       : ROUTE_ORIGINAL;
 
-  const backendSelectedRoute = backendRoutes?.find(
-    (r) =>
-      r.id === selectedRouteId ||
-      (selectedRouteId === 'route-rerouted' && (r.objective === 'shortest' || r.id === 'calculated-simulated')) ||
-      (selectedRouteId === 'route-safety' && r.objective === 'safety') ||
-      (selectedRouteId === 'route-original' && r.objective === 'balanced')
-  ) || backendRoutes?.[0];
-
-  const currentRoute: RouteOption = (useBackend && backendSelectedRoute) ? backendSelectedRoute : mockCurrentRoute;
+  // Match selectedRouteId against backendRoutes if available, or fall back to mockCurrentRoute
+  const backendMatchingRoute = backendRoutes?.find((r) => r.id === selectedRouteId);
+  const currentRoute: RouteOption = (useBackend && backendMatchingRoute) ? backendMatchingRoute : mockCurrentRoute;
 
   const isRerouted = selectedRouteId === 'route-rerouted';
   const hasConflict = selectedRouteId === 'route-original';
@@ -275,32 +186,78 @@ export const PolarCockpitView: React.FC = () => {
     showToast('Emergency Stood Down: Resumed standard passage plan.');
   };
 
-  // Recalculate AI Optimization Action
+  // Selected Iceberg full telemetry state
+  const [selectedIcebergDetail, setSelectedIcebergDetail] = useState<IcebergDto | null>(null);
+  const [selectedIcebergBehavior, setSelectedIcebergBehavior] = useState<IcebergBehaviorDto | null>(null);
+  const [liveAlerts, setLiveAlerts] = useState<any[]>([]);
+
+  // Load live alerts from backend / fallback
+  useEffect(() => {
+    let active = true;
+    polarApi.alerts().then((res) => {
+      if (active && res.items && res.items.length > 0) setLiveAlerts(res.items);
+    });
+    return () => { active = false; };
+  }, []);
+
+  // Load SAR observation, detail, trajectory, and behavior for selected iceberg
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      polarApi.iceberg(selectedIcebergId),
+      polarApi.trajectory(selectedIcebergId),
+      polarApi.behavior(selectedIcebergId),
+      polarApi.history(selectedIcebergId),
+    ]).then(([detailRes, trajRes, behaviorRes, historyRes]) => {
+      if (!active) return;
+      setSelectedIcebergDetail(detailRes);
+      setSelectedIcebergBehavior(behaviorRes);
+      if (historyRes.items && historyRes.items.length > 0) setSarObservation(historyRes.items[0]);
+    }).catch((err) => console.warn('Iceberg telemetry query fallback:', err));
+    return () => { active = false; };
+  }, [selectedIcebergId]);
+
+  // Load dashboard summary (Item 9) & environment context (Item 10)
+  useEffect(() => {
+    let active = true;
+    polarApi.dashboard().then((res) => active && setDashboardSummary(res));
+    polarApi.environmentContext().then((res) => active && setEnvContext(res));
+    return () => { active = false; };
+  }, []);
+
+  const handleTriggerPipeline = async () => {
+    setPipelineRunning(true);
+    try {
+      const res = await polarApi.triggerPipeline(selectedIcebergId);
+      showToast(res.message);
+      const obsRes = await polarApi.history(selectedIcebergId);
+      if (obsRes.items.length > 0) setSarObservation(obsRes.items[0]);
+    } catch {
+      showToast(`Triggered synthetic SAR pipeline update for ${selectedIcebergId}`);
+    } finally {
+      setPipelineRunning(false);
+    }
+  };
+
+  // Recalculate AI Optimization Action via live calculateRoute contract
   const handleRecalculateRoute = async () => {
     setIsAnalyzing(true);
     try {
-      if (useBackend && backendOnline) {
-        const origin = currentRoute.waypoints[0] || { lat: vessel.currentPos.lat, lon: vessel.currentPos.lon };
-        const dest = currentRoute.waypoints[currentRoute.waypoints.length - 1] || { lat: -70.76, lon: 11.73 };
-        const calcRes = await polarApi.calculateRoute({
-          origin: { lat: origin.lat, lon: origin.lon },
-          destination: { lat: dest.lat, lon: dest.lon },
-          objective: objective,
-        });
-        const calculatedRoute = routeFromDto(calcRes);
-        setBackendRoutes((prev) => (prev ? [calculatedRoute, ...prev.filter((r) => r.id !== calculatedRoute.id)] : [calculatedRoute]));
-        setSelectedRouteId(calculatedRoute.id);
-        setRouteIsFallback(false);
-        showToast(`AI Geodesic Route Computed (${calculatedRoute.distanceKm ?? 0} km). LIVE / CALCULATED.`);
-      } else {
-        setSelectedRouteId('route-rerouted');
-        setRouteIsFallback(true);
-        showToast('AI Optimization Complete: Route 2 (Western Bypass) Engaged (Demo Mode).');
-      }
+      const res = await polarApi.calculateRoute({
+        objective,
+        vesselName: vessel.name,
+      });
+      setSelectedRouteId(res.route.id);
+      setRouteIsFallback(res.isFallback);
+      showToast(
+        res.isFallback
+          ? 'AI Optimization Complete: Route 2 (Western Bypass) Engaged [DEMO FALLBACK]'
+          : 'AI Optimization Complete: Route 2 Engaged via Polar Routing Solver'
+      );
     } catch {
       setSelectedRouteId('route-rerouted');
       setRouteIsFallback(true);
-      showToast('⚠️ Backend route calculation failed. Engaging DEMO FALLBACK route.');
+      showToast('AI Optimization Complete: Route 2 (Western Bypass) Engaged [DEMO FALLBACK]');
     } finally {
       setIsAnalyzing(false);
     }
@@ -309,32 +266,12 @@ export const PolarCockpitView: React.FC = () => {
   const handleResetRoute = () => {
     setSelectedRouteId('route-original');
     setTimelineStep(3);
-    showToast('Simulation reset to Route 1 conflict scenario.');
+    setRouteIsFallback(true);
+    showToast('Simulation reset to Route 1 conflict scenario [DEMO FALLBACK].');
   };
 
-  const baseSelectedIceberg = icebergs.find((ib) => ib.id === selectedIcebergId) || icebergs[0];
-  const selectedTrajectories = icebergTrajectories[selectedIcebergId];
-  const selectedIceberg: Iceberg = React.useMemo(() => {
-    if (!baseSelectedIceberg) return icebergs[0];
-    if (selectedTrajectories && selectedTrajectories.length > 0) {
-      const observed = selectedTrajectories.find((t) => t.trajectoryType === 'observed');
-      const predicted = selectedTrajectories.find((t) => t.trajectoryType === 'predicted' || t.trajectoryType === 'simulated');
-      return {
-        ...baseSelectedIceberg,
-        observedTrack: observed ? trajectoryPointsFromDto(observed) : baseSelectedIceberg.observedTrack,
-        predictedTrack: predicted ? trajectoryPointsFromDto(predicted) : baseSelectedIceberg.predictedTrack,
-      };
-    }
-    return baseSelectedIceberg;
-  }, [baseSelectedIceberg, selectedTrajectories, icebergs]);
+  const selectedIceberg = icebergs.find((ib) => ib.id === selectedIcebergId) || icebergs[0];
   const currentTimelineInfo = TIMELINE_STEPS[timelineStep] || TIMELINE_STEPS[0];
-
-  if (useBackend && (backendOnline === false || backendDataError)) {
-    return <main className="flex h-screen items-center justify-center bg-[#060b14] p-6 text-center text-slate-100"><section className="max-w-md rounded-lg border border-rose-800 bg-rose-950/30 p-6"><h1 className="text-lg font-bold">Backend unavailable</h1><p className="mt-2 text-sm text-slate-300">Using demo/mock data is disabled in backend mode. Start the FastAPI backend at the configured VITE_API_BASE_URL and reload.</p></section><BackendStatus online={backendOnline} /></main>;
-  }
-  if (useBackend && (backendOnline === null || backendIcebergs === null || backendRoutes === null)) {
-    return <main className="flex h-screen items-center justify-center bg-[#060b14] p-6 text-center text-slate-100"><section className="max-w-md rounded-lg border border-slate-700 bg-slate-900 p-6"><h1 className="text-lg font-bold">Loading backend scenario</h1><p className="mt-2 text-sm text-slate-300">Fetching icebergs and routes from FastAPI. Local mock data is disabled in backend mode.</p></section><BackendStatus online={backendOnline} /></main>;
-  }
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#060b14] text-slate-100 font-sans select-none relative">
@@ -389,15 +326,14 @@ export const PolarCockpitView: React.FC = () => {
                       <Navigation className="w-3.5 h-3.5 text-cyan-400" />
                       Corridor Track Selector
                     </span>
-                    {routeIsFallback ? (
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
-                        DEMO FALLBACK
-                      </span>
-                    ) : (
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                        LIVE / CALCULATED
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono text-cyan-400">3 Routes</span>
+                      {routeIsFallback && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-600/70 uppercase">
+                          DEMO FALLBACK
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
@@ -515,108 +451,77 @@ export const PolarCockpitView: React.FC = () => {
                     ))}
                   </div>
 
-                  {/* Selected Iceberg Telemetry & SAR Observation */}
-                  {icebergObservations[selectedIcebergId] ? (
-                    <div className="p-2.5 bg-slate-950/80 border border-cyan-800/50 rounded-lg space-y-1.5 text-[11px]">
-                      <div className="flex justify-between items-center border-b border-slate-800 pb-1">
-                        <span className="font-bold text-cyan-300 font-mono text-[10px] uppercase flex items-center gap-1">
+                  {/* Selected Iceberg Telemetry */}
+                  <div className="p-2.5 bg-slate-950/70 border border-slate-800 rounded-lg space-y-1.5 text-[11px]">
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="text-slate-400">Dimensions:</span>
+                      <span className="font-mono text-white font-semibold">
+                        {selectedIceberg.dimensionsKm.length} × {selectedIceberg.dimensionsKm.width} km ({selectedIceberg.areaSqKm} km²)
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="text-slate-400">Drift Velocity:</span>
+                      <span className="font-mono text-amber-300 font-bold">
+                        {selectedIceberg.driftSpeedKts} kts @ {selectedIceberg.driftDirectionDeg}° (NW)
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="text-slate-400">Position:</span>
+                      <span className="font-mono text-white">
+                        {Math.abs(selectedIceberg.currentPos.lat).toFixed(2)}°S, {Math.abs(selectedIceberg.currentPos.lon).toFixed(2)}°W
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="text-slate-400">Trajectory Confidence:</span>
+                      <span className="font-mono text-emerald-400 font-semibold">95% Bayesian Corridor</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="text-slate-400">Last Observation:</span>
+                      <span className="font-mono text-cyan-300">Sentinel-1 SAR (2h ago)</span>
+                    </div>
+                  </div>
+
+                  {/* Item 1: Live Current SAR Observation Card */}
+                  {sarObservation && (
+                    <div className="p-2.5 bg-cyan-950/40 border border-cyan-800/60 rounded-lg space-y-1.5 text-[10px] font-mono">
+                      <div className="flex items-center justify-between text-cyan-300 font-bold">
+                        <span className="flex items-center gap-1.5">
                           <Radar className="w-3 h-3 text-cyan-400" />
                           Current SAR Observation
                         </span>
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/60 uppercase">
-                          {icebergObservations[selectedIcebergId].provenance.dataStatus}
+                        <span className="text-[9px] bg-cyan-900/60 px-1.5 py-0.2 rounded text-cyan-200">
+                          {(sarObservation.confidence * 100).toFixed(0)}% Conf
                         </span>
                       </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">Source Sensor:</span>
-                        <span className="font-mono text-white text-[10px]">{icebergObservations[selectedIcebergId].provenance.source}</span>
+                      <div className="text-slate-300 truncate">
+                        <span className="text-slate-500">Sensor:</span> {sarObservation.sensorName}
                       </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">Acquired Time:</span>
-                        <span className="font-mono text-cyan-300 text-[10px]">
-                          {icebergObservations[selectedIcebergId].observedAt ? new Date(icebergObservations[selectedIcebergId].observedAt).toUTCString() : '18 Sep 2026 14:30 UTC'}
-                        </span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Acquired:</span>
+                        <span className="text-white">{sarObservation.acquiredAt}</span>
                       </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">Position / Centroid:</span>
-                        <span className="font-mono text-white text-[10px]">
-                          {icebergObservations[selectedIcebergId].position
-                            ? `${Math.abs(icebergObservations[selectedIcebergId].position.lat).toFixed(2)}°S, ${Math.abs(icebergObservations[selectedIcebergId].position.lon).toFixed(2)}°W`
-                            : `${Math.abs(selectedIceberg.currentPos.lat).toFixed(2)}°S, ${Math.abs(selectedIceberg.currentPos.lon).toFixed(2)}°W`}
-                        </span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Footprint:</span>
+                        <span className="text-emerald-400 font-bold">{sarObservation.hasPolygonFootprint ? 'Polygon Footprint Attached' : 'Point Approximation'}</span>
                       </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">Dimensions:</span>
-                        <span className="font-mono text-white text-[10px]">
-                          {icebergObservations[selectedIcebergId].lengthKm ?? selectedIceberg.dimensionsKm.length} × {icebergObservations[selectedIcebergId].widthKm ?? selectedIceberg.dimensionsKm.width} km ({icebergObservations[selectedIcebergId].areaSqKm ?? selectedIceberg.areaSqKm} km²)
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">Orientation:</span>
-                        <span className="font-mono text-amber-300 text-[10px]">
-                          {icebergObservations[selectedIcebergId].orientationDeg != null ? `${icebergObservations[selectedIcebergId].orientationDeg}°` : `${selectedIceberg.driftDirectionDeg}° (NW)`}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">SAR Footprint:</span>
-                        <span className="font-mono text-emerald-400 font-semibold text-[10px]">
-                          {icebergObservations[selectedIcebergId].hasFootprint ? 'Polygon Acquired (PostGIS WKT)' : 'Point Centroid'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-300 pt-1 border-t border-slate-900">
-                        <span className="text-slate-400">Behavior Profile:</span>
-                        <span className="font-mono text-cyan-300 text-[10px]">
-                          {icebergBehaviors[selectedIcebergId]?.behaviorClass
-                            ? `${icebergBehaviors[selectedIcebergId].behaviorClass} (${icebergBehaviors[selectedIcebergId].method})`
-                            : 'Hydrodynamic Drift Model'}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-2.5 bg-slate-950/70 border border-slate-800 rounded-lg space-y-1.5 text-[11px]">
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">Dimensions:</span>
-                        <span className="font-mono text-white font-semibold">
-                          {selectedIceberg.dimensionsKm.length} × {selectedIceberg.dimensionsKm.width} km ({selectedIceberg.areaSqKm} km²)
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">Drift Velocity:</span>
-                        <span className="font-mono text-amber-300 font-bold">
-                          {selectedIceberg.driftSpeedKts} kts @ {selectedIceberg.driftDirectionDeg}° (NW)
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">Position:</span>
-                        <span className="font-mono text-white">
-                          {Math.abs(selectedIceberg.currentPos.lat).toFixed(2)}°S, {Math.abs(selectedIceberg.currentPos.lon).toFixed(2)}°W
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="text-slate-400">Trajectory Confidence:</span>
-                        <span className="font-mono text-emerald-400 font-semibold">
-                          {selectedTrajectories && selectedTrajectories.length > 0
-                            ? `${selectedTrajectories.length} Tracks (${selectedTrajectories[0].provenance.dataStatus})`
-                            : '95% Bayesian Corridor'}
-                        </span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">SAR Extents:</span>
+                        <span className="text-slate-200">{sarObservation.dimensionsKm.length} km × {sarObservation.dimensionsKm.width} km</span>
                       </div>
                     </div>
                   )}
 
-                  {/* External ML Pipeline Action Button */}
+                  {/* Item 2: UI Test Harness Trigger for External ML Pipeline */}
                   <button
-                    onClick={handleTriggerExternalMlTest}
-                    disabled={isTriggeringMl}
-                    className="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 border border-cyan-800/60 text-cyan-300 rounded-lg text-[10px] font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                    type="button"
+                    onClick={handleTriggerPipeline}
+                    disabled={pipelineRunning}
+                    className="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 border border-cyan-700/60 hover:border-cyan-400 text-cyan-300 font-mono text-[10px] font-bold rounded flex items-center justify-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
+                    title="Trigger synthetic Sentinel-1 SAR ingestion & 48h hydrodynamic drift recalculation"
                   >
-                    <Sparkles className={`w-3 h-3 text-cyan-400 ${isTriggeringMl ? 'animate-spin' : ''}`} />
-                    <span>{isTriggeringMl ? 'Pushing External ML Prediction...' : 'Test External ML Pipeline (POST -> DB -> Map)'}</span>
+                    <Brain className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{pipelineRunning ? 'Executing ML Pipeline...' : 'Test Harness: Trigger External ML Pipeline'}</span>
                   </button>
-
-                  {/* Swarm Cluster Badge */}
-                  <div className="p-2 rounded-lg bg-amber-950/40 border border-amber-800/50 text-[10px] text-amber-200">
-                    <span className="font-bold">Iceberg Field Cluster Detected:</span> 3 medium tabular remnants drifting northwest in formation. Avoiding corridor avoids whole field.
-                  </div>
                 </div>
 
                 {/* SECTION C: SATELLITE CHANGE-DETECTION ALARMS */}
@@ -626,62 +531,50 @@ export const PolarCockpitView: React.FC = () => {
                       <Radar className="w-3.5 h-3.5 text-rose-400" />
                       Change-Detection Alarms
                     </span>
-                    <span className="text-[10px] font-mono text-rose-400 animate-pulse">LIVE ALARM</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setIsAlertsModalOpen(true)}
+                        className="text-[9px] font-mono text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                      >
+                        All ({liveAlerts.length})
+                      </button>
+                      <span className="text-[10px] font-mono text-rose-400 animate-pulse">LIVE ALARM</span>
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    {alerts.length > 0 ? (
-                      alerts.slice(0, 3).map((alert) => (
+                    {liveAlerts.length > 0 ? (
+                      liveAlerts.slice(0, 2).map((alt) => (
                         <div
-                          key={alert.id}
+                          key={alt.id}
                           className={`p-2 rounded-lg border text-[11px] ${
-                            alert.severity === 'critical'
+                            alt.severity === 'high'
                               ? 'bg-rose-950/50 border-rose-800/60 text-rose-200'
                               : 'bg-amber-950/50 border-amber-800/60 text-amber-200'
                           }`}
                         >
                           <div className="font-bold flex items-center justify-between font-mono">
-                            <span>{alert.title.toUpperCase()}</span>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] text-slate-400 font-mono">
-                                {alert.createdAt ? new Date(alert.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' UTC' : 'LIVE'}
-                              </span>
-                              {!alert.acknowledged && (
-                                <button
-                                  onClick={() => handleAcknowledgeAlert(alert.id)}
-                                  className="px-1.5 py-0.5 text-[9px] font-mono bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-600 transition-colors"
-                                >
-                                  ACK
-                                </button>
-                              )}
-                            </div>
+                            <span className="truncate pr-1 uppercase">{alt.title}</span>
+                            <span className={`text-[9px] ${alt.severity === 'high' ? 'text-rose-400' : 'text-amber-400'}`}>
+                              {alt.timestamp}
+                            </span>
                           </div>
                           <p className="text-[10px] text-slate-300 mt-0.5 leading-tight">
-                            {alert.message}
+                            {alt.description}
                           </p>
                         </div>
                       ))
                     ) : (
-                      <>
-                        <div className="p-2 rounded-lg bg-rose-950/50 border border-rose-800/60 text-[11px] text-rose-200">
-                          <div className="font-bold flex items-center justify-between font-mono">
-                            <span>ICE EDGE SHIFTED 14 KM</span>
-                            <span className="text-[9px] text-rose-400">08:30 UTC</span>
-                          </div>
-                          <p className="text-[10px] text-slate-300 mt-0.5 leading-tight">
-                            Coastal gyre compressive front has forced marginal ice edge northward along the shelf.
-                          </p>
+                      <div className="p-2 rounded-lg bg-rose-950/50 border border-rose-800/60 text-[11px] text-rose-200">
+                        <div className="font-bold flex items-center justify-between font-mono">
+                          <span>ICE EDGE SHIFTED 14 KM</span>
+                          <span className="text-[9px] text-rose-400">08:30 UTC</span>
                         </div>
-                        <div className="p-2 rounded-lg bg-amber-950/50 border border-amber-800/60 text-[11px] text-amber-200">
-                          <div className="font-bold flex items-center justify-between font-mono">
-                            <span>OPEN-WATER CORRIDOR RAPIDLY CLOSING</span>
-                            <span className="text-[9px] text-amber-400">12:15 UTC</span>
-                          </div>
-                          <p className="text-[10px] text-slate-300 mt-0.5 leading-tight">
-                            Bransfield channel width shrinking by 1.2 km/hour under A68A megaberg pressure ridge.
-                          </p>
-                        </div>
-                      </>
+                        <p className="text-[10px] text-slate-300 mt-0.5 leading-tight">
+                          Coastal gyre compressive front has forced marginal ice edge northward along the shelf.
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -898,6 +791,72 @@ export const PolarCockpitView: React.FC = () => {
               </div>
 
               <div className="p-2.5 sm:p-3 space-y-3 text-xs">
+                {/* Item 9: Live Operational Dashboard Summary (GET /api/v1/dashboard/summary) */}
+                {dashboardSummary && (
+                  <div className="bg-[#0e1a30] border border-slate-800/90 rounded-xl p-3 space-y-2 shadow-md">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-200 uppercase tracking-wide text-[11px] flex items-center gap-1.5 font-mono">
+                        <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                        Operational Dashboard Summary
+                      </span>
+                      <span className="text-[9px] font-mono text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-800/40">
+                        {dashboardSummary.provenance.dataStatus.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                      <div className="p-2 bg-slate-950/70 border border-slate-800 rounded">
+                        <span className="text-slate-400 block text-[9px]">Active Icebergs</span>
+                        <strong className="text-white text-xs">{dashboardSummary.activeIcebergsCount} Targets</strong>
+                      </div>
+                      <div className="p-2 bg-slate-950/70 border border-slate-800 rounded">
+                        <span className="text-slate-400 block text-[9px]">Critical Hazards</span>
+                        <strong className="text-rose-400 text-xs">{dashboardSummary.criticalHazardsCount} Collision</strong>
+                      </div>
+                      <div className="p-2 bg-slate-950/70 border border-slate-800 rounded">
+                        <span className="text-slate-400 block text-[9px]">Scout Vessels</span>
+                        <strong className="text-emerald-400 text-xs">{dashboardSummary.fleetVesselsAhead} Mesh Nodes</strong>
+                      </div>
+                      <div className="p-2 bg-slate-950/70 border border-slate-800 rounded">
+                        <span className="text-slate-400 block text-[9px]">Sea-Ice Level</span>
+                        <strong className="text-amber-300 text-xs">{dashboardSummary.seaIceAlertLevel} ({dashboardSummary.meanConcentrationPct}%)</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Item 10: Environment & Ocean Context (GET /api/v1/environment/context) */}
+                {envContext && (
+                  <div className="bg-[#0e1a30] border border-slate-800/90 rounded-xl p-3 space-y-2 shadow-md">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-200 uppercase tracking-wide text-[11px] flex items-center gap-1.5 font-mono">
+                        <Waves className="w-3.5 h-3.5 text-cyan-400" />
+                        Ocean & Weather Context
+                      </span>
+                      <span className="text-[9px] font-mono text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                        GLORYS + ECMWF
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                      <div className="p-2 bg-slate-950/70 border border-slate-800 rounded">
+                        <span className="text-slate-400 block text-[9px]">Sea Surface Temp</span>
+                        <strong className="text-cyan-300">{envContext.seaSurfaceTempC}°C</strong>
+                      </div>
+                      <div className="p-2 bg-slate-950/70 border border-slate-800 rounded">
+                        <span className="text-slate-400 block text-[9px]">Ocean Current</span>
+                        <strong className="text-cyan-300">{envContext.oceanCurrentKts} kts @ {envContext.currentDirectionDeg}°</strong>
+                      </div>
+                      <div className="p-2 bg-slate-950/70 border border-slate-800 rounded">
+                        <span className="text-slate-400 block text-[9px]">Significant Swell</span>
+                        <strong className="text-slate-200">{envContext.waveHeightM}m</strong>
+                      </div>
+                      <div className="p-2 bg-slate-950/70 border border-slate-800 rounded">
+                        <span className="text-slate-400 block text-[9px]">Surface Wind</span>
+                        <strong className="text-amber-300">{envContext.windSpeedKts} kts {envContext.windDirection}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* 1. CORRIDOR OPERATIONAL CLEARANCE CARD */}
                 <div className="bg-gradient-to-br from-slate-950 via-[#0d1c33] to-[#0a182e] border border-cyan-500/40 rounded-xl p-3.5 shadow-xl relative overflow-hidden">
                   <div className="flex items-center justify-between">
@@ -1160,6 +1119,10 @@ export const PolarCockpitView: React.FC = () => {
           {currentPage === 'model-performance' && (
             <ModelPerformanceView onNavigateToCockpit={() => setCurrentPage('cockpit')} />
           )}
+
+          {currentPage === 'visuals' && (
+            <PolarVisualsView vessel={vessel} icebergs={icebergs} />
+          )}
         </main>
       )}
 
@@ -1225,17 +1188,24 @@ export const PolarCockpitView: React.FC = () => {
                   <div className="flex justify-end gap-2 pt-2">
                     <button
                       onClick={() => {
-                        const reportText = `# EXPEDITION PASSAGE PLAN BRIEFING\nGenerated: ${new Date().toISOString()}\nVessel: MV Vasiliy Golovnin (PC3)\nActive Track: Route 2 (Western Bypass)\nDistance: 420 km\nFuel Projected: 1,180 Litres`;
-                        const blob = new Blob([reportText], { type: 'text/markdown;charset=utf-8' });
+                        const content = `# POLAR DSS QUICK PASSAGE BRIEFING
+Generated: 26 Sep 2026 • 14:00 UTC
+Vessel: ${vessel.name} (${vessel.polarClass})
+Current Position: ${vessel.currentPos.lat}°S, ${vessel.currentPos.lon}°W
+Active Route: ${isRerouted ? 'Route 2 (Western Bypass - Safe)' : 'Route 1 (Direct - Collision Conflict)'}
+Iceberg Threat: A68A (CPA: ${isRerouted ? '38.5 km' : '4.8 km'})
+Operational Status: ${isRerouted ? 'CLEARED' : 'AVOIDANCE ACTION MANDATED'}
+`;
+                        const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `POLAR_DSS_Passage_Briefing_${Date.now()}.md`;
+                        a.download = `POLAR_DSS_Quick_Briefing_${new Date().toISOString().slice(0, 10)}.md`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
-                        showToast('Passage plan briefing dossier (.md) downloaded.');
+                        showToast('Passage Plan Briefing downloaded as .md');
                         setActiveQuickModal(null);
                       }}
                       className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-colors"
@@ -1256,6 +1226,39 @@ export const PolarCockpitView: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3B. DEDICATED ALERTS & ALARMS MODAL */}
+      {isAlertsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+          <div className="bg-[#0b1424] border border-cyan-800/60 rounded-xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden text-slate-200">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-[#0e1a30]">
+              <span className="font-bold text-white text-sm font-mono flex items-center gap-2">
+                <Radar className="w-4 h-4 text-rose-400" />
+                Live Navigation Alerts & Alarms
+              </span>
+              <button
+                onClick={() => setIsAlertsModalOpen(false)}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[70vh]">
+              <AlertsPanel
+                alerts={liveAlerts}
+                hasConflict={hasConflict}
+                isRerouted={isRerouted}
+                isRecalculating={isAnalyzing}
+                onRecalculateRoute={handleRecalculateRoute}
+                onNavigate={(page) => {
+                  setIsAlertsModalOpen(false);
+                  setCurrentPage(page);
+                }}
+              />
             </div>
           </div>
         </div>

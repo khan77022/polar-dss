@@ -17,9 +17,7 @@ import {
 import { AntarcticMap } from '../AntarcticMap';
 import { Iceberg, Vessel, RouteOption } from '../../types';
 import { ROUTE_ORIGINAL, ROUTE_REROUTED } from '../../data/polarData';
-
-import { polarApi, useBackend } from '../../api/client';
-import { trajectoryPointsFromDto } from '../../api/adapters';
+import { polarApi } from '../../api/client';
 
 interface IcebergTrackingViewProps {
   vessel: Vessel;
@@ -51,7 +49,6 @@ export const IcebergTrackingView: React.FC<IcebergTrackingViewProps> = ({
 
   const [isRecalculating, setIsRecalculating] = useState<boolean>(false);
   const [recalcSuccess, setRecalcSuccess] = useState<boolean>(false);
-  const [liveTrajectoryNotice, setLiveTrajectoryNotice] = useState<string | null>(null);
 
   const timelineDates = [
     { step: 0, label: '26 Sep', time: '14:30 UTC' },
@@ -77,13 +74,11 @@ export const IcebergTrackingView: React.FC<IcebergTrackingViewProps> = ({
   const handleRecalculateTrajectory = async () => {
     setIsRecalculating(true);
     setRecalcSuccess(false);
-    setLiveTrajectoryNotice(null);
     try {
-      if (useBackend) {
-        const res = await polarApi.trajectory(currentBerg.id);
-        const count = res.items?.length || 0;
-        setLiveTrajectoryNotice(`Backend trajectory fetched: ${count} track series synchronized.`);
-      }
+      await Promise.all([
+        polarApi.trajectory(currentBerg.id),
+        polarApi.triggerPipeline(currentBerg.id),
+      ]);
       setRecalcSuccess(true);
     } catch {
       setRecalcSuccess(true);
@@ -121,8 +116,8 @@ export const IcebergTrackingView: React.FC<IcebergTrackingViewProps> = ({
           </div>
         </div>
 
-        {/* Iceberg Selector Dropdown and Recalculate Action */}
-        <div className="flex items-center gap-2 relative z-30 flex-wrap">
+        {/* Iceberg Selector Dropdown */}
+        <div className="flex items-center gap-2 relative z-30">
           <label htmlFor="iceberg-select" className="text-xs font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
             Monitored Target:
           </label>
@@ -141,23 +136,8 @@ export const IcebergTrackingView: React.FC<IcebergTrackingViewProps> = ({
               </option>
             ))}
           </select>
-          <button
-            onClick={handleRecalculateTrajectory}
-            disabled={isRecalculating}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <Sparkles className={`w-3.5 h-3.5 ${isRecalculating ? 'animate-spin' : ''}`} />
-            <span>{isRecalculating ? 'Forecasting...' : 'Recalculate Trajectory'}</span>
-          </button>
         </div>
       </div>
-
-      {liveTrajectoryNotice && (
-        <div className="p-2.5 rounded-lg bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 text-xs font-mono flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{liveTrajectoryNotice}</span>
-        </div>
-      )}
 
       {/* 2. Main Map Display */}
       <div className="h-[460px] lg:h-[500px] rounded-xl overflow-hidden border border-slate-800 shadow-xl relative">

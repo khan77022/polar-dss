@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Bot,
   Radio,
+  Eye,
 } from 'lucide-react';
 import { NavPage } from '../types';
 
@@ -77,6 +78,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     { id: 'fleet-recon', label: 'Vanguard Recon', icon: Ship },
     { id: 'reports', label: 'Passage Briefings', icon: FileText },
     { id: 'model-performance', label: 'AI Architecture', icon: Brain },
+    { id: 'visuals', label: 'Fleet Gallery', icon: Eye },
   ];
 
   return (

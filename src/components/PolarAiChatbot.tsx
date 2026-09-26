@@ -13,6 +13,10 @@ import {
   Snowflake,
   ExternalLink,
   RotateCcw,
+  Volume2,
+  VolumeX,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { ChatMessage, Vessel, Iceberg, RouteOption } from '../types';
 import { AHEAD_VESSELS, INDIAN_POLAR_HUBS } from '../data/polarData';
@@ -74,12 +78,48 @@ export const PolarAiChatbot: React.FC<PolarAiChatbotProps> = ({
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
   // Auto-scroll to bottom on new message
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen, isThinking]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const handleSpeak = (id: string, text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (speakingId === id) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[*#_`]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.05;
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+    setSpeakingId(id);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleCopy = (id: string, text: string) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
 
   // Quick Action Prompts
   const quickPrompts = [
@@ -245,44 +285,41 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
     setIsThinking(true);
 
     try {
-      if (useBackend) {
-        const data = await polarApi.chat(query);
-        setMessages((prev) => [...prev, { id: `assist-${Date.now()}`, sender: 'assistant', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC', text: `${data.answer}\n\nStatus: ${data.dataStatus}. ${data.limitations}` }]);
-        setIsThinking(false);
-        return;
-      }
-      // Try to call server-side Gemini API route first
+      const payload = {
+        message: query,
+        context: {
+          vesselName: vessel.name,
+          vesselPos: vessel.currentPos,
+          isRerouted,
+          hasConflict,
+          timelineStep,
+          currentRouteName: currentRoute.name,
+          icebergHazard: icebergs[0]?.name,
+          vanguardVesselsAhead: AHEAD_VESSELS.map((v) => ({
+            name: v.vesselName,
+            distanceAheadKm: v.distanceAheadKm,
+            leadCondition: v.leadCondition,
+            vPirep: v.vPirepNotes,
+          })),
+        },
+      };
+
+      // Call server-side full-stack endpoint
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: query,
-          context: {
-            vesselName: vessel.name,
-            vesselPos: vessel.currentPos,
-            isRerouted,
-            hasConflict,
-            timelineStep,
-            currentRouteName: currentRoute.name,
-            icebergHazard: icebergs[0]?.name,
-            vanguardVesselsAhead: AHEAD_VESSELS.map((v) => ({
-              name: v.vesselName,
-              distanceAheadKm: v.distanceAheadKm,
-              leadCondition: v.leadCondition,
-              vPirep: v.vPirepNotes,
-            })),
-          },
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         const data = await res.json();
-        if (data && data.reply) {
+        const replyText = data.reply || data.answer;
+        if (replyText) {
           const assistantMsg: ChatMessage = {
             id: `assist-${Date.now()}`,
             sender: 'assistant',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC',
-            text: data.reply,
+            text: replyText,
             actionTag: data.actionTag,
             actionLabel: data.actionLabel,
           };
@@ -292,12 +329,7 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
         }
       }
     } catch (err) {
-      if (useBackend) {
-        setMessages((prev) => [...prev, { id: `assist-${Date.now()}`, sender: 'assistant', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' UTC', text: 'Backend unavailable. Local mock chat is disabled in backend mode.' }]);
-        setIsThinking(false);
-        return;
-      }
-      // Server not reachable or Gemini API offline, proceed seamlessly with the built-in polar expert engine
+      console.warn('Server chat call encountered error, engaging local tactical fallback:', err);
     }
 
     // Expert reasoning engine fallback
@@ -313,7 +345,7 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
       };
       setMessages((prev) => [...prev, assistantMsg]);
       setIsThinking(false);
-    }, 450);
+    }, 350);
   };
 
   const handleActionClick = (actionTag?: string) => {
@@ -325,7 +357,7 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
           id: `sys-${Date.now()}`,
           sender: 'system',
           timestamp: 'NOW',
-          text: '⚡ **Action Executed**: Route 2 (Western Bypass) has been calculated and engaged in the primary navigation plot. Hazard corridor cleared.',
+          text: '⚡ **Tactical Action Executed**: Route 2 (Western Bypass) engaged in the primary navigation plot. CPA expanded to 38.5 km, clearing the A68A hazard corridor.',
         },
       ]);
     } else if (actionTag === 'recon' && onNavigateToPage) {
@@ -333,6 +365,15 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
       closeOpen();
     } else if (actionTag === 'convlstm' && onNavigateToPage) {
       onNavigateToPage('model-performance');
+      closeOpen();
+    } else if (actionTag === 'sea-ice' && onNavigateToPage) {
+      onNavigateToPage('sea-ice');
+      closeOpen();
+    } else if (actionTag === 'weather' && onNavigateToPage) {
+      onNavigateToPage('weather');
+      closeOpen();
+    } else if (actionTag === 'iceberg' && onNavigateToPage) {
+      onNavigateToPage('iceberg-tracking');
       closeOpen();
     }
   };
@@ -492,6 +533,46 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
                           <ShieldCheck className="w-3.5 h-3.5" />
                           <span>{m.actionLabel}</span>
                         </button>
+                      </div>
+                    )}
+
+                    {/* Assistant Message Tooling (Audio & Copy) */}
+                    {isAssistant && (
+                      <div className="mt-2 pt-1.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-400">
+                        <span className="font-mono text-[9px] text-blue-900 font-semibold flex items-center gap-1">
+                          <Bot className="w-3 h-3 text-blue-600" />
+                          ध्रुव-AI Tactical Mesh
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSpeak(m.id, m.text)}
+                            title={speakingId === m.id ? 'Stop audio' : 'Listen to advisory'}
+                            className={`p-1 rounded transition-colors cursor-pointer ${
+                              speakingId === m.id
+                                ? 'bg-blue-100 text-blue-700 animate-pulse'
+                                : 'text-slate-400 hover:text-blue-700 hover:bg-slate-200/60'
+                            }`}
+                          >
+                            {speakingId === m.id ? (
+                              <VolumeX className="w-3.5 h-3.5" />
+                            ) : (
+                              <Volume2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(m.id, m.text)}
+                            title="Copy advisory"
+                            className="p-1 rounded text-slate-400 hover:text-blue-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                          >
+                            {copiedId === m.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

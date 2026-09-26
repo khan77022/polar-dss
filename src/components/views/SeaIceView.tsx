@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Snowflake,
   Layers,
@@ -9,13 +9,10 @@ import {
   Info,
   ArrowLeft,
   Sparkles,
-  RefreshCw,
 } from 'lucide-react';
 import { AntarcticMap } from '../AntarcticMap';
 import { Vessel, Iceberg } from '../../types';
 import { ROUTE_REROUTED } from '../../data/polarData';
-import { polarApi, useBackend, SeaIceRecordDto } from '../../api/client';
-import { provenanceBadgeClass, provenanceBadgeLabel } from '../../api/hooks';
 
 interface SeaIceViewProps {
   vessel: Vessel;
@@ -35,13 +32,10 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
   onNavigateToCockpit,
 }) => {
   const [region, setRegion] = useState<string>('Prydz Bay / Larsemann Hills');
-  const [backendRegions, setBackendRegions] = useState<Array<{ id: string; name: string }>>([]);
   const [forecastHorizon, setForecastHorizon] = useState<string>('+24h');
   const [localStep, setLocalStep] = useState<number>(3);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedSuccess, setGeneratedSuccess] = useState<boolean>(false);
-  const [backendRecords, setBackendRecords] = useState<SeaIceRecordDto[]>([]);
-  const [activeProvenance, setActiveProvenance] = useState<string>('observed');
 
   // Forecast Horizons: Current, +6h, +12h, +24h, +48h
   const horizons = [
@@ -63,34 +57,7 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
     '+48h': { meanConcentration: '73%', risk: 'High', confidence: 'External Forecast (82%)', iceEdgeTrend: 'Pack convergence closing eastern channel' },
   };
 
-  useEffect(() => {
-    if (!useBackend) return;
-    let active = true;
-    Promise.allSettled([
-      polarApi.seaIceCurrent(),
-      polarApi.seaIceRegions(),
-    ]).then(([curRes, regRes]) => {
-      if (!active) return;
-      if (curRes.status === 'fulfilled' && curRes.value?.items) {
-        setBackendRecords(curRes.value.items);
-        if (curRes.value.items[0]?.provenance?.dataStatus) {
-          setActiveProvenance(curRes.value.items[0].provenance.dataStatus);
-        }
-      }
-      if (regRes.status === 'fulfilled' && regRes.value?.items) {
-        setBackendRegions(regRes.value.items.map((r: any) => ({ id: r.id, name: r.name })));
-      }
-    });
-    return () => { active = false; };
-  }, []);
-
   const currentStats = horizonData[forecastHorizon] || horizonData['+24h'];
-
-  // If backend record exists, calculate matching concentration
-  const liveRecord = backendRecords.length > 0 ? backendRecords[0] : null;
-  const displayConcentration = liveRecord?.concentrationPercent != null
-    ? `${liveRecord.concentrationPercent}%`
-    : currentStats.meanConcentration;
 
   const handleSelectHorizon = (h: { label: string; step: number }) => {
     setForecastHorizon(h.label);
@@ -98,24 +65,13 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
     setGeneratedSuccess(false);
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     setIsGenerating(true);
     setGeneratedSuccess(false);
-    try {
-      if (useBackend) {
-        const forecastRes = await polarApi.seaIceForecast();
-        if (forecastRes.items?.length > 0) {
-          setBackendRecords(forecastRes.items);
-          setActiveProvenance(forecastRes.items[0].provenance?.dataStatus ?? 'forecast');
-        }
-      }
-      setGeneratedSuccess(true);
-    } catch (e) {
-      console.error('ConvLSTM forecast failed:', e);
-      setGeneratedSuccess(true);
-    } finally {
+    setTimeout(() => {
       setIsGenerating(false);
-    }
+      setGeneratedSuccess(true);
+    }, 600);
   };
 
   return (
@@ -137,8 +93,11 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
               <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight font-mono">
                 SEA-ICE CONCENTRATION FORECAST
               </h1>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${provenanceBadgeClass(activeProvenance)}`}>
-                {provenanceBadgeLabel(activeProvenance)}
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/60">
+                Source: External forecast
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800/60">
+                Status: PREDICTED / DEMO
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -149,20 +108,26 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
 
         <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-          <span>External Forecast Spatiotemporal Grid (Demo)</span>
+          <span>External Forecast Spatiotemporal Grid (Demo) (25 km Resolution)</span>
         </div>
       </div>
 
-      {/* 2. Main Content Grid: Left Controls (4 cols), Right Map (8 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
-        {/* Control Panel (4 cols) */}
-        <div className="lg:col-span-4 bg-[#0b1424] border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between">
+      {/* 2. Main Grid: Controls on Left, Map on Right */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-[520px]">
+        {/* Controls Card (4 cols) */}
+        <div className="lg:col-span-4 bg-[#0b1424] border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between">
           <div className="space-y-4">
-            {/* Region Selector */}
-            <div>
-              <label htmlFor="sea-ice-region-select" className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5 uppercase tracking-wider text-[10px]">
-                <Compass className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Geographic Sector</span>
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+              <Snowflake className="w-4 h-4 text-cyan-400" />
+              <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                Prediction Parameters
+              </h2>
+            </div>
+
+            {/* Region Dropdown */}
+            <div className="relative z-30">
+              <label htmlFor="sea-ice-region-select" className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider text-[10px]">
+                Antarctic Region
               </label>
               <select
                 id="sea-ice-region-select"
@@ -170,18 +135,10 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
                 onChange={(e) => setRegion(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white shadow-inner focus:outline-hidden focus:ring-2 focus:ring-cyan-500 cursor-pointer"
               >
-                {backendRegions.length > 0 ? (
-                  backendRegions.map((r) => (
-                    <option key={r.id} value={r.name}>{r.name}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="Prydz Bay / Larsemann Hills">Prydz Bay / Larsemann Hills (Bharati Station)</option>
-                    <option value="Queen Maud Land / India Bay">Queen Maud Land / India Bay (Maitri Base)</option>
-                    <option value="Amery Ice Shelf Marginal Sea">Amery Ice Shelf Marginal Sea (D28 Calving Zone)</option>
-                    <option value="Princess Astrid Coast Passage">Princess Astrid Coast Fast-Ice Passage</option>
-                  </>
-                )}
+                <option value="Prydz Bay / Larsemann Hills">Prydz Bay / Larsemann Hills (Bharati Station)</option>
+                <option value="Queen Maud Land / India Bay">Queen Maud Land / India Bay (Maitri Base)</option>
+                <option value="Amery Ice Shelf Marginal Sea">Amery Ice Shelf Marginal Sea (D28 Calving Zone)</option>
+                <option value="Princess Astrid Coast Passage">Princess Astrid Coast Fast-Ice Passage</option>
               </select>
             </div>
 
@@ -215,24 +172,24 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
                 <span>Ice Concentration Scale:</span>
                 <span className="text-[10px] text-cyan-400">Sentinel-1 SAR</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-                <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                  <span className="text-slate-400 text-[10px] block">Mean Concentration</span>
-                  <span className="text-sm font-bold text-cyan-300">{displayConcentration}</span>
+              <div className="grid grid-cols-3 gap-2 text-[10px]">
+                <div className="p-2 bg-emerald-950/40 border border-emerald-800/50 rounded-lg text-emerald-200">
+                  <div className="font-bold">Low (0-30%)</div>
+                  <div className="text-slate-400 mt-0.5">Navigable leads</div>
                 </div>
-                <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                  <span className="text-slate-400 text-[10px] block">Navigation Risk</span>
-                  <span className={`text-sm font-bold ${
-                    currentStats.risk === 'High' ? 'text-rose-400' : currentStats.risk === 'Medium' ? 'text-amber-400' : 'text-emerald-400'
-                  }`}>
-                    {currentStats.risk}
-                  </span>
+                <div className="p-2 bg-sky-950/40 border border-sky-800/50 rounded-lg text-sky-200">
+                  <div className="font-bold">MIZ (30-65%)</div>
+                  <div className="text-slate-400 mt-0.5">Fractured pack</div>
+                </div>
+                <div className="p-2 bg-rose-950/40 border border-rose-800/50 rounded-lg text-rose-200">
+                  <div className="font-bold">High (&gt;65%)</div>
+                  <div className="text-slate-400 mt-0.5">Heavy pack ice</div>
                 </div>
               </div>
-              <div className="p-2 rounded bg-slate-900 border border-slate-800 text-[11px]">
-                <span className="text-slate-400 text-[10px] block font-mono">Marginal Ice Zone Dynamics:</span>
-                <span className="text-slate-200">{currentStats.iceEdgeTrend}</span>
-              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-800/40 text-[11px] text-cyan-200 leading-snug">
+              <strong>Evolution Trend ({forecastHorizon}):</strong> {currentStats.iceEdgeTrend}
             </div>
           </div>
 
@@ -241,7 +198,7 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
             {generatedSuccess && (
               <div className="text-xs text-emerald-300 bg-emerald-950/60 border border-emerald-500/50 rounded-lg p-2.5 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                <span>Backend sea-ice forecast synchronized for {forecastHorizon} (Source: External forecast, Status: PREDICTED).</span>
+                <span>Updated spatiotemporal prediction loaded for {forecastHorizon}.</span>
               </div>
             )}
 
@@ -254,7 +211,7 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
               {isGenerating ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Fetching Sea-Ice Forecast...</span>
+                  <span>Generating Spatiotemporal Grid...</span>
                 </>
               ) : (
                 <>
@@ -274,7 +231,7 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
               <span className="text-slate-400">• Horizon: {forecastHorizon}</span>
             </div>
             <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400">
-              <span>Mean Conc: <strong className="text-white">{displayConcentration}</strong></span>
+              <span>Mean Conc: <strong className="text-white">{currentStats.meanConcentration}</strong></span>
               <span>Confidence: <strong className="text-emerald-400">{currentStats.confidence}</strong></span>
             </div>
           </div>

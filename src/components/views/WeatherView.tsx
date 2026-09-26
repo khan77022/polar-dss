@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Wind,
   Compass,
@@ -7,39 +7,36 @@ import {
   Thermometer,
   Navigation,
   ArrowLeft,
+  Info,
   ShieldAlert,
-  RefreshCw,
+  RotateCcw,
+  Radio,
+  CheckCircle2,
 } from 'lucide-react';
-import { polarApi, useBackend, WeatherRecordDto, OceanRecordDto } from '../../api/client';
-import { provenanceBadgeClass, provenanceBadgeLabel } from '../../api/hooks';
+import { polarApi, WeatherTelemetryDto, OceanTelemetryDto } from '../../api/client';
 
 interface WeatherViewProps {
   onNavigateToCockpit?: () => void;
 }
 
 export const WeatherView: React.FC<WeatherViewProps> = ({ onNavigateToCockpit }) => {
-  const [weatherRecord, setWeatherRecord] = useState<WeatherRecordDto | null>(null);
-  const [oceanRecord, setOceanRecord] = useState<OceanRecordDto | null>(null);
+  const [weatherData, setWeatherData] = useState<WeatherTelemetryDto | null>(null);
+  const [oceanData, setOceanData] = useState<OceanTelemetryDto | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [dataSource, setDataSource] = useState<string>('simulation');
+  const [lastRefreshed, setLastRefreshed] = useState<string>('Just now');
 
   const fetchTelemetry = async () => {
-    if (!useBackend) return;
     setIsLoading(true);
     try {
-      const [wRes, oRes] = await Promise.allSettled([
+      const [w, o] = await Promise.all([
         polarApi.weatherCurrent(),
         polarApi.oceanCurrent(),
       ]);
-      if (wRes.status === 'fulfilled' && wRes.value?.items?.[0]) {
-        setWeatherRecord(wRes.value.items[0]);
-        setDataSource(wRes.value.items[0].provenance?.dataStatus ?? 'observed');
-      }
-      if (oRes.status === 'fulfilled' && oRes.value?.items?.[0]) {
-        setOceanRecord(oRes.value.items[0]);
-      }
-    } catch (e) {
-      console.error('Weather telemetry fetch failed:', e);
+      setWeatherData(w);
+      setOceanData(o);
+      setLastRefreshed(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' UTC');
+    } catch (err) {
+      console.warn('Weather telemetry fetch fallback:', err);
     } finally {
       setIsLoading(false);
     }
@@ -49,65 +46,55 @@ export const WeatherView: React.FC<WeatherViewProps> = ({ onNavigateToCockpit })
     fetchTelemetry();
   }, []);
 
-  const wVals = weatherRecord?.values;
-  const oVals = oceanRecord?.values;
-
-  const windSpeedKts = wVals?.wind_speed_kts ?? 20.5;
-  const windDirDeg = wVals?.wind_direction_deg ?? 315;
-  const oceanSpeedKts = oVals?.current_speed_kts ?? 1.2;
-  const oceanDirDeg = oVals?.current_direction_deg ?? 40;
-  const waveHeightM = wVals?.wave_height_m ?? 2.4;
-  const wavePeriodS = wVals?.wave_period_s ?? 7.5;
-  const visibilityKm = wVals?.visibility_km ?? 10.0;
-  const airTempC = wVals?.air_temperature_c ?? -14.0;
-  const sprayRisk = wVals?.freezing_spray_risk ?? 'light';
+  const w = weatherData;
+  const o = oceanData;
 
   const weatherMetrics = [
     {
       id: 'wind-speed',
       label: 'Wind Speed & Flow',
-      value: `${windSpeedKts} knots`,
-      subtext: `${(windSpeedKts * 1.852).toFixed(1)} km/h (${windSpeedKts > 28 ? 'Near Gale' : windSpeedKts > 16 ? 'Moderate Breeze' : 'Gentle Breeze'})`,
+      value: w ? `${w.windSpeedKts} knots` : '20.5 knots',
+      subtext: w ? `${w.windSpeedKmh.toFixed(1)} km/h (${w.windSpeedKts > 25 ? 'Near Gale' : 'Moderate Flow'})` : '38.0 km/h (Moderate Gale)',
       icon: Wind,
       color: 'text-cyan-400 bg-cyan-950/60 border-cyan-800/60',
     },
     {
       id: 'wind-direction',
       label: 'Wind Direction',
-      value: `${windDirDeg}° (Bearing)`,
-      subtext: 'Katabatic offshore drainage gradient',
+      value: w ? w.windDirectionText : 'NW • 315°',
+      subtext: 'Northwesterly katabatic offshore drainage',
       icon: Compass,
       color: 'text-blue-400 bg-blue-950/60 border-blue-800/60',
     },
     {
       id: 'ocean-current',
       label: 'Surface Ocean Current',
-      value: `${oceanSpeedKts} knots`,
-      subtext: `${(Number(oceanSpeedKts) * 0.514444).toFixed(2)} m/s • Heading ${oceanDirDeg}°`,
+      value: o ? `${o.oceanCurrentKts} knots` : w ? `${w.oceanCurrentKts} knots` : '1.2 knots',
+      subtext: o ? `Heading ${o.currentDirectionDeg}° • Salinity ${o.salinityPsu} PSU` : '0.62 m/s • Heading 040° NE',
       icon: Navigation,
       color: 'text-teal-400 bg-teal-950/60 border-teal-800/60',
     },
     {
       id: 'wave-height',
       label: 'Significant Wave Height',
-      value: `${waveHeightM} m`,
-      subtext: `Period ${wavePeriodS}s (Moderate swell)`,
+      value: w ? `${w.waveHeightM} m` : '2.4 m',
+      subtext: w ? `Period ${w.wavePeriodS}s (Polar swell)` : 'Period 7.5s (Moderate polar swell)',
       icon: Waves,
       color: 'text-sky-400 bg-sky-950/60 border-sky-800/60',
     },
     {
       id: 'visibility',
       label: 'Horizon Visibility',
-      value: visibilityKm >= 10 ? '> 10 km' : `${visibilityKm} km`,
-      subtext: visibilityKm >= 10 ? 'Unrestricted leads horizon' : 'Restricted visibility in snow/haze',
+      value: w ? `> ${w.visibilityKm} km` : '> 10 km',
+      subtext: 'Unrestricted leads horizon',
       icon: Eye,
       color: 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60',
     },
     {
       id: 'air-temperature',
       label: 'Surface Air Temp',
-      value: `${airTempC.toFixed(1)}°C`,
-      subtext: `Wind chill equivalent: ${(airTempC - windSpeedKts * 0.4).toFixed(1)}°C`,
+      value: w ? `${w.airTempC}°C` : '-14.0°C',
+      subtext: w ? `Wind chill: ${w.windChillC}°C • SST: ${w.seaSurfaceTempC}°C` : 'Wind chill equivalent: -22.5°C',
       icon: Thermometer,
       color: 'text-rose-400 bg-rose-950/60 border-rose-800/60',
     },
@@ -132,8 +119,8 @@ export const WeatherView: React.FC<WeatherViewProps> = ({ onNavigateToCockpit })
               <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight font-mono">
                 POLAR METEOROLOGICAL & SEA-STATE OBSERVATIONS
               </h1>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${provenanceBadgeClass(dataSource)}`}>
-                {provenanceBadgeLabel(dataSource)}
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/60">
+                {w?.provenance ? `PROVENANCE: ${w.provenance.dataStatus.toUpperCase()}` : 'TELEMETRY FEED'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -143,13 +130,17 @@ export const WeatherView: React.FC<WeatherViewProps> = ({ onNavigateToCockpit })
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="text-xs font-mono text-cyan-400 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800">
+            Updated: {lastRefreshed}
+          </div>
           <button
             onClick={fetchTelemetry}
             disabled={isLoading}
-            className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 bg-slate-900 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 text-xs font-mono font-bold rounded-lg cursor-pointer transition-colors disabled:opacity-50"
+            title="Query latest weather & ocean API endpoints"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Sync Live Telemetry</span>
+            <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>{isLoading ? 'Querying...' : 'Refresh Telemetry'}</span>
           </button>
         </div>
       </div>
@@ -193,25 +184,19 @@ export const WeatherView: React.FC<WeatherViewProps> = ({ onNavigateToCockpit })
             <ShieldAlert className="w-4 h-4 text-amber-400" />
             Superstructure Icing & Marine Advisory
           </span>
-          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${
-            sprayRisk === 'high' || sprayRisk === 'severe'
-              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-              : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-          }`}>
-            ADVISORY: {sprayRisk} SPRAY ICING
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+            {w ? `ADVISORY: ${w.advisoryLevel} SPRAY ICING` : 'ADVISORY: LIGHT SPRAY ICING'}
           </span>
         </div>
         <p className="text-xs text-slate-300 leading-relaxed">
-          Air temperature ({airTempC.toFixed(1)}°C) with {windSpeedKts} knot winds and {waveHeightM}m swell generates {sprayRisk} freezing spray on exposed foredeck and container cranes. De-icing heaters active on bridge navigation radar scanners and VHF antennas. Hull sea water intake temperature favorable above heavy anchor-ice threshold.
+          {w ? w.freezingSprayAdvisory : 'Air temperature (-14.0°C) with 20.5 knot winds and 2.4m swell generates light freezing spray on exposed foredeck and container cranes. De-icing heaters active on bridge navigation radar scanners and VHF antennas.'}
         </p>
       </div>
 
       {/* 4. Station Reference Note */}
       <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl text-xs text-slate-400 flex items-center justify-between font-mono">
-        <span>Station Observation Sector: <strong className="text-slate-200">Indian Antarctic Coastal Sector & Prydz Bay</strong></span>
-        <span className="text-cyan-400">
-          Source: {weatherRecord?.provenance?.source ?? 'WMO-89062'} • {weatherRecord?.validAt ? new Date(weatherRecord.validAt).toUTCString() : 'Active In-Situ'}
-        </span>
+        <span>Station Observation Sector: <strong className="text-slate-200">{w?.observedStation ?? 'Indian Antarctic Coastal Sector & Prydz Bay'}</strong></span>
+        <span className="text-cyan-400">Source: {w?.provenance?.source ?? 'ECMWF HRES / In-Situ Bridge AWS'}</span>
       </div>
     </div>
   );

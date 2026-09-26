@@ -7,7 +7,8 @@ export type NavPage =
   | 'weather'
   | 'fleet-recon'
   | 'reports'
-  | 'model-performance';
+  | 'model-performance'
+  | 'visuals';
 
 export type RiskLevel = 'low' | 'medium' | 'high';
 

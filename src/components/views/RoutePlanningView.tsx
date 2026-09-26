@@ -24,6 +24,7 @@ import {
   ROUTE_REROUTED,
   ROUTE_MAX_SAFETY,
 } from '../../data/polarData';
+import { polarApi } from '../../api/client';
 
 interface RoutePlanningViewProps {
   vessel: Vessel;
@@ -64,15 +65,25 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
     }
   }, [isRerouted]);
 
-  const handleRecalculate = () => {
+  const handleRecalculate = async () => {
     setIsAnalyzing(true);
-    setTimeout(() => {
-      setIsAnalyzing(false);
+    try {
+      const res = await polarApi.calculateRoute({
+        objective,
+        vesselName: vessel.name,
+      });
+      setSelectedRouteId(res.route.id);
+      if (onRecalculateRoute) {
+        onRecalculateRoute();
+      }
+    } catch {
       setSelectedRouteId('route-rerouted');
       if (onRecalculateRoute) {
         onRecalculateRoute();
       }
-    }, 750);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleReset = () => {
