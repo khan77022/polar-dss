@@ -49,6 +49,8 @@ import { WeatherView } from './views/WeatherView';
 import { FleetReconView } from './views/FleetReconView';
 import { ReportsView } from './views/ReportsView';
 import { ModelPerformanceView } from './views/ModelPerformanceView';
+import { PolarEmergencySystem } from './PolarEmergencySystem';
+import { EmergencyType, SafeHavenDestination, EMERGENCY_TYPES } from '../data/emergencyData';
 import { Vessel, Iceberg, RouteOption, NavPage } from '../types';
 import {
   RESEARCH_VESSEL,
@@ -98,6 +100,13 @@ export const PolarCockpitView: React.FC = () => {
     }, 3800);
   };
 
+  // Emergency Response Decision Support System State
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState<boolean>(false);
+  const [isEmergencyActive, setIsEmergencyActive] = useState<boolean>(false);
+  const [activeEmergencyType, setActiveEmergencyType] = useState<EmergencyType>('engine-failure');
+  const [activeEmergencyDestination, setActiveEmergencyDestination] = useState<SafeHavenDestination | null>(null);
+  const [emergencyRoute, setEmergencyRoute] = useState<RouteOption | null>(null);
+
   // Derive active route object
   const currentRoute: RouteOption =
     selectedRouteId === 'route-rerouted'
@@ -108,6 +117,20 @@ export const PolarCockpitView: React.FC = () => {
 
   const isRerouted = selectedRouteId === 'route-rerouted';
   const hasConflict = selectedRouteId === 'route-original';
+
+  // Emergency handlers
+  const handleEngageEmergencyRoute = (route: RouteOption, destination: SafeHavenDestination) => {
+    setEmergencyRoute(route);
+    setActiveEmergencyDestination(destination);
+    setIsEmergencyActive(true);
+    showToast(`🚨 Emergency Haven Engaged: Diverting to ${destination.name}`);
+  };
+
+  const handleCancelEmergency = () => {
+    setIsEmergencyActive(false);
+    setEmergencyRoute(null);
+    showToast('Emergency Stood Down: Resumed standard passage plan.');
+  };
 
   // Recalculate AI Optimization Action
   const handleRecalculateRoute = () => {
@@ -143,17 +166,20 @@ export const PolarCockpitView: React.FC = () => {
         onToggleChatbot={() => setIsChatbotOpen((prev) => !prev)}
         isChatbotOpen={isChatbotOpen}
         isAnalyzing={isAnalyzing}
+        onOpenEmergency={() => setIsEmergencyModalOpen(true)}
+        isEmergencyActive={isEmergencyActive}
+        emergencyTypeTitle={EMERGENCY_TYPES[activeEmergencyType].title}
       />
 
       {/* 2. DEDICATED VIEW ROUTER OR MASTER COCKPIT */}
       {currentPage === 'cockpit' || currentPage === 'dashboard' ? (
         /* MASTER THREE-COLUMN COMMAND COCKPIT WORKSPACE */
         <div className="flex-1 flex min-h-0 w-full overflow-hidden relative">
-          {/* LEFT PANEL: Tactical Route Controls & Target Tracking */}
+          {/* LEFT PANEL: Tactical Route Controls & Target Tracking (Optimized width to maximize central map) */}
           {leftPanelOpen && (
-            <aside className="w-80 xl:w-88 min-w-[320px] max-w-[360px] h-full bg-[#0b1424] border-r border-slate-800 flex flex-col z-10 shrink-0 overflow-y-auto">
+            <aside className="w-72 xl:w-76 min-w-[275px] max-w-[310px] h-full bg-[#0b1424] border-r border-slate-800 flex flex-col z-10 shrink-0 overflow-y-auto">
               {/* Panel Header */}
-              <div className="p-3 border-b border-slate-800/80 flex items-center justify-between bg-[#0e1a30]/90 sticky top-0 z-10 backdrop-blur-md">
+              <div className="p-2.5 sm:p-3 border-b border-slate-800/80 flex items-center justify-between bg-[#0e1a30]/90 sticky top-0 z-10 backdrop-blur-md">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-cyan-400" />
                   <span className="text-xs font-bold uppercase tracking-wider text-white font-mono">
@@ -169,7 +195,7 @@ export const PolarCockpitView: React.FC = () => {
                 </button>
               </div>
 
-              <div className="p-3 space-y-4 text-xs">
+              <div className="p-2.5 sm:p-3 space-y-3 text-xs">
                 {/* SECTION A: ROUTE SELECTION & OPTIMIZER */}
                 <div className="bg-[#0e1a30] border border-slate-800/90 rounded-xl p-3.5 space-y-2.5 shadow-md">
                   <div className="flex items-center justify-between">
@@ -401,6 +427,34 @@ export const PolarCockpitView: React.FC = () => {
                       <span>Share Track with Bridge Crew</span>
                     </button>
                   </div>
+
+                  {/* EMERGENCY DECISION SUPPORT SYSTEM LAUNCHER */}
+                  <div className="pt-2 border-t border-slate-800">
+                    <button
+                      onClick={() => setIsEmergencyModalOpen(true)}
+                      className={`w-full p-2.5 rounded-xl border font-mono font-bold text-[11px] flex items-center justify-between shadow-md cursor-pointer transition-all ${
+                        isEmergencyActive
+                          ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-rose-950 animate-pulse'
+                          : 'bg-gradient-to-r from-rose-950/80 via-slate-900 to-rose-950/50 hover:bg-rose-900/80 border-rose-500/40 text-rose-200 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{EMERGENCY_TYPES[activeEmergencyType].icon}</span>
+                        <div className="text-left">
+                          <div className="leading-tight font-extrabold flex items-center gap-1.5">
+                            <span>{isEmergencyActive ? 'MAYDAY GUIDANCE ACTIVE' : 'EMERGENCY PROTOCOL (EDSS)'}</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+                          </div>
+                          <div className="text-[9px] text-rose-300/80 font-normal">
+                            {isEmergencyActive
+                              ? `Diversion: ${activeEmergencyDestination?.name}`
+                              : 'Engine • Fire • Collision • Medical • Ice'}
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-rose-300 shrink-0" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </aside>
@@ -420,6 +474,42 @@ export const PolarCockpitView: React.FC = () => {
 
           {/* CENTER MAIN WORKSPACE: THE SATELLITE MAP */}
           <main className="flex-1 flex flex-col min-w-0 h-full relative overflow-hidden bg-slate-950">
+            {/* FLOATING ACTIVE EMERGENCY GUIDANCE HUD (When engaged) */}
+            {isEmergencyActive && activeEmergencyDestination && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 bg-gradient-to-r from-rose-950/95 via-[#1a0815]/95 to-slate-950/95 border-2 border-rose-500/80 rounded-xl px-4 py-2 text-white shadow-2xl backdrop-blur-md flex flex-wrap items-center gap-3 animate-in fade-in max-w-[94%]">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono font-bold text-rose-300 uppercase flex items-center gap-1.5 truncate">
+                    <span>🚨 ACTIVE MAYDAY REFUGE DIVERSION</span>
+                    <span>•</span>
+                    <span className="text-white">{EMERGENCY_TYPES[activeEmergencyType].title}</span>
+                  </div>
+                  <div className="text-xs font-bold font-mono text-white flex items-center gap-2 truncate">
+                    <span>DEST: {activeEmergencyDestination.name}</span>
+                    <span className="text-cyan-300 font-normal hidden sm:inline">
+                      ({activeEmergencyDestination.distanceKm} km • {activeEmergencyDestination.weather.windSpeedKts} kts wind)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setIsEmergencyModalOpen(true)}
+                    className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-mono font-bold text-[10px] cursor-pointer shadow-md transition-colors"
+                  >
+                    EMERGENCY CONSOLE
+                  </button>
+                  <button
+                    onClick={handleCancelEmergency}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-[10px] font-mono cursor-pointer border border-slate-700 transition-colors"
+                    title="Cancel Emergency and return to normal navigation"
+                  >
+                    STAND DOWN
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* THE PRESERVED SATELLITE MAP IMPLEMENTATION */}
             <div className="flex-1 w-full h-full relative">
               <AntarcticMap
@@ -432,6 +522,8 @@ export const PolarCockpitView: React.FC = () => {
                 isRerouted={isRerouted}
                 alternativeRoute={selectedRouteId !== 'route-rerouted' ? ROUTE_REROUTED : undefined}
                 safetyRoute={ROUTE_MAX_SAFETY}
+                emergencyRoute={emergencyRoute}
+                isEmergencyActive={isEmergencyActive}
                 hasConflict={hasConflict}
                 onRecalculateRoute={handleRecalculateRoute}
                 isRecalculating={isAnalyzing}
@@ -489,11 +581,11 @@ export const PolarCockpitView: React.FC = () => {
             </button>
           )}
 
-          {/* RIGHT PANEL: Decision Support System (DSS) & Analytics */}
+          {/* RIGHT PANEL: Decision Support System (DSS) & Analytics (Optimized width to maximize map) */}
           {rightPanelOpen && (
-            <aside className="w-84 xl:w-96 min-w-[340px] max-w-[400px] h-full bg-[#0b1424] border-l border-slate-800 flex flex-col z-10 shrink-0 overflow-y-auto">
+            <aside className="w-76 xl:w-80 min-w-[290px] max-w-[330px] h-full bg-[#0b1424] border-l border-slate-800 flex flex-col z-10 shrink-0 overflow-y-auto">
               {/* Panel Header */}
-              <div className="p-3 border-b border-slate-800/80 flex items-center justify-between bg-[#0e1a30]/90 sticky top-0 z-10 backdrop-blur-md">
+              <div className="p-2.5 sm:p-3 border-b border-slate-800/80 flex items-center justify-between bg-[#0e1a30]/90 sticky top-0 z-10 backdrop-blur-md">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-cyan-400" />
                   <span className="text-xs font-bold uppercase tracking-wider text-white font-mono">
@@ -509,7 +601,7 @@ export const PolarCockpitView: React.FC = () => {
                 </button>
               </div>
 
-              <div className="p-3 space-y-3.5 text-xs">
+              <div className="p-2.5 sm:p-3 space-y-3 text-xs">
                 {/* 1. CORRIDOR OPERATIONAL CLEARANCE CARD */}
                 <div className="bg-gradient-to-br from-slate-950 via-[#0d1c33] to-[#0a182e] border border-cyan-500/40 rounded-xl p-3.5 shadow-xl relative overflow-hidden">
                   <div className="flex items-center justify-between">
@@ -883,6 +975,20 @@ export const PolarCockpitView: React.FC = () => {
         onNavigateToPage={setCurrentPage}
         isOpen={isChatbotOpen}
         onToggleOpen={() => setIsChatbotOpen((prev) => !prev)}
+      />
+
+      {/* 6. POLAR EMERGENCY DECISION SUPPORT SYSTEM (EDSS) MODAL */}
+      <PolarEmergencySystem
+        isOpen={isEmergencyModalOpen}
+        onClose={() => setIsEmergencyModalOpen(false)}
+        vessel={vessel}
+        onEngageEmergencyRoute={handleEngageEmergencyRoute}
+        onCancelEmergency={handleCancelEmergency}
+        isEmergencyActive={isEmergencyActive}
+        activeEmergencyType={activeEmergencyType}
+        setActiveEmergencyType={setActiveEmergencyType}
+        activeDestination={activeEmergencyDestination}
+        setActiveDestination={setActiveEmergencyDestination}
       />
     </div>
   );

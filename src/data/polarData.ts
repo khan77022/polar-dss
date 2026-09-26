@@ -13,7 +13,7 @@ export const RESEARCH_VESSEL: Vessel = {
   fuelRateLPerHour: 115,
   startPort: 'Bharati Station (Larsemann Hills, 69°24\'S 76°11\'E)',
   destination: 'Maitri Station (Schirmacher Oasis, 70°46\'S 11°44\'E)',
-  departureDate: '18 Sep 2026',
+  departureDate: '26 Sep 2026',
   eta: '18h 42m',
 };
 
@@ -32,7 +32,7 @@ export const AHEAD_VESSELS: AheadVesselReport[] = [
     bearingDeg: 220,
     speedKts: 11.2,
     headingDeg: 218,
-    lastReportTime: '18 Sep • 14:15 UTC (15 min ago)',
+    lastReportTime: '26 Sep • 14:15 UTC (15 min ago)',
     observedSeaIceConcentration: 42,
     floeThicknessM: 0.95,
     leadCondition: 'Clear Open Leads',
@@ -102,7 +102,7 @@ export const AHEAD_VESSELS: AheadVesselReport[] = [
     bearingDeg: 208,
     speedKts: 13.0,
     headingDeg: 195,
-    lastReportTime: '18 Sep • 12:20 UTC (2h ago)',
+    lastReportTime: '26 Sep • 12:20 UTC (2h ago)',
     observedSeaIceConcentration: 68,
     floeThicknessM: 1.4,
     leadCondition: 'Heavy Pressure Ridges',
@@ -137,7 +137,7 @@ export const AHEAD_VESSELS: AheadVesselReport[] = [
     bearingDeg: 45,
     speedKts: 12.8,
     headingDeg: 40,
-    lastReportTime: '18 Sep • 13:55 UTC (35 min ago)',
+    lastReportTime: '26 Sep • 13:55 UTC (35 min ago)',
     observedSeaIceConcentration: 74,
     floeThicknessM: 1.8,
     leadCondition: 'Heavy Pressure Ridges',
@@ -463,17 +463,17 @@ export const ICEBERGS: Iceberg[] = [
     imageUrl: 'https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=800&q=80',
     imageCaption: 'Tabular iceberg drifting in the Southern Ocean (Sentinel-3 / BAS optical validation)',
     observedTrack: [
-      { lat: -65.40, lon: -54.10, date: '15 Sep', timeUtc: '00:00', speedKts: 1.1, uncertaintyRadiusKm: 2.0 },
-      { lat: -64.90, lon: -54.80, date: '16 Sep', timeUtc: '06:00', speedKts: 1.2, uncertaintyRadiusKm: 2.5 },
-      { lat: -64.35, lon: -55.50, date: '17 Sep', timeUtc: '12:00', speedKts: 1.3, uncertaintyRadiusKm: 3.0 },
-      { lat: -63.85, lon: -56.20, date: '18 Sep', timeUtc: '14:30', speedKts: 1.4, uncertaintyRadiusKm: 3.5 },
+      { lat: -65.40, lon: -54.10, date: '23 Sep', timeUtc: '00:00', speedKts: 1.1, uncertaintyRadiusKm: 2.0 },
+      { lat: -64.90, lon: -54.80, date: '24 Sep', timeUtc: '06:00', speedKts: 1.2, uncertaintyRadiusKm: 2.5 },
+      { lat: -64.35, lon: -55.50, date: '25 Sep', timeUtc: '12:00', speedKts: 1.3, uncertaintyRadiusKm: 3.0 },
+      { lat: -63.85, lon: -56.20, date: '26 Sep', timeUtc: '14:30', speedKts: 1.4, uncertaintyRadiusKm: 3.5 },
     ],
     predictedTrack: [
-      { lat: -63.85, lon: -56.20, date: '18 Sep', timeUtc: '14:30', speedKts: 1.4, uncertaintyRadiusKm: 3.5 },
-      { lat: -63.30, lon: -57.10, date: '19 Sep', timeUtc: '12:00', speedKts: 1.4, uncertaintyRadiusKm: 7.0 },
-      { lat: -62.80, lon: -58.20, date: '20 Sep', timeUtc: '12:00', speedKts: 1.5, uncertaintyRadiusKm: 12.0 },
-      { lat: -62.35, lon: -59.50, date: '21 Sep', timeUtc: '14:00', speedKts: 1.6, uncertaintyRadiusKm: 18.0 }, // Potential encounter point!
-      { lat: -61.80, lon: -61.00, date: '22 Sep', timeUtc: '12:00', speedKts: 1.5, uncertaintyRadiusKm: 26.0 },
+      { lat: -63.85, lon: -56.20, date: '26 Sep', timeUtc: '14:30', speedKts: 1.4, uncertaintyRadiusKm: 3.5 },
+      { lat: -63.30, lon: -57.10, date: '27 Sep', timeUtc: '12:00', speedKts: 1.4, uncertaintyRadiusKm: 7.0 },
+      { lat: -62.80, lon: -58.20, date: '28 Sep', timeUtc: '12:00', speedKts: 1.5, uncertaintyRadiusKm: 12.0 },
+      { lat: -62.35, lon: -59.50, date: '29 Sep', timeUtc: '14:00', speedKts: 1.6, uncertaintyRadiusKm: 18.0 }, // Potential encounter point!
+      { lat: -61.80, lon: -61.00, date: '30 Sep', timeUtc: '12:00', speedKts: 1.5, uncertaintyRadiusKm: 26.0 },
     ],
     // The corridor polygon points (left edge going forward, right edge returning)
     corridorPolygon: [
@@ -506,16 +506,16 @@ export const ICEBERGS: Iceberg[] = [
     imageUrl: 'https://images.unsplash.com/photo-1548232979-6c557ee14752?auto=format&fit=crop&w=800&q=80',
     imageCaption: 'Deep-keeled Antarctic iceberg fragment monitored via Sentinel-1 SAR',
     observedTrack: [
-      { lat: -67.20, lon: -49.50, date: '15 Sep', timeUtc: '00:00', speedKts: 0.8, uncertaintyRadiusKm: 2.0 },
-      { lat: -66.65, lon: -50.15, date: '16 Sep', timeUtc: '12:00', speedKts: 0.8, uncertaintyRadiusKm: 3.0 },
-      { lat: -66.10, lon: -50.80, date: '18 Sep', timeUtc: '14:30', speedKts: 0.9, uncertaintyRadiusKm: 4.0 },
+      { lat: -67.20, lon: -49.50, date: '23 Sep', timeUtc: '00:00', speedKts: 0.8, uncertaintyRadiusKm: 2.0 },
+      { lat: -66.65, lon: -50.15, date: '24 Sep', timeUtc: '12:00', speedKts: 0.8, uncertaintyRadiusKm: 3.0 },
+      { lat: -66.10, lon: -50.80, date: '26 Sep', timeUtc: '14:30', speedKts: 0.9, uncertaintyRadiusKm: 4.0 },
     ],
     predictedTrack: [
-      { lat: -66.10, lon: -50.80, date: '18 Sep', timeUtc: '14:30', speedKts: 0.9, uncertaintyRadiusKm: 4.0 },
-      { lat: -65.40, lon: -51.60, date: '19 Sep', timeUtc: '12:00', speedKts: 0.9, uncertaintyRadiusKm: 8.0 },
-      { lat: -64.70, lon: -52.40, date: '20 Sep', timeUtc: '12:00', speedKts: 1.0, uncertaintyRadiusKm: 14.0 },
-      { lat: -64.00, lon: -53.20, date: '21 Sep', timeUtc: '12:00', speedKts: 1.0, uncertaintyRadiusKm: 20.0 },
-      { lat: -63.20, lon: -54.00, date: '22 Sep', timeUtc: '12:00', speedKts: 1.1, uncertaintyRadiusKm: 28.0 },
+      { lat: -66.10, lon: -50.80, date: '26 Sep', timeUtc: '14:30', speedKts: 0.9, uncertaintyRadiusKm: 4.0 },
+      { lat: -65.40, lon: -51.60, date: '27 Sep', timeUtc: '12:00', speedKts: 0.9, uncertaintyRadiusKm: 8.0 },
+      { lat: -64.70, lon: -52.40, date: '28 Sep', timeUtc: '12:00', speedKts: 1.0, uncertaintyRadiusKm: 14.0 },
+      { lat: -64.00, lon: -53.20, date: '29 Sep', timeUtc: '12:00', speedKts: 1.0, uncertaintyRadiusKm: 20.0 },
+      { lat: -63.20, lon: -54.00, date: '30 Sep', timeUtc: '12:00', speedKts: 1.1, uncertaintyRadiusKm: 28.0 },
     ],
     corridorPolygon: [
       { lat: -66.10, lon: -50.90 },
@@ -545,13 +545,13 @@ export const ICEBERGS: Iceberg[] = [
     imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80',
     imageCaption: 'High-latitude sea ice floe and tabular remnant',
     observedTrack: [
-      { lat: -65.80, lon: -60.30, date: '16 Sep', timeUtc: '00:00', speedKts: 0.5, uncertaintyRadiusKm: 2.0 },
-      { lat: -65.20, lon: -60.50, date: '18 Sep', timeUtc: '14:30', speedKts: 0.6, uncertaintyRadiusKm: 3.0 },
+      { lat: -65.80, lon: -60.30, date: '24 Sep', timeUtc: '00:00', speedKts: 0.5, uncertaintyRadiusKm: 2.0 },
+      { lat: -65.20, lon: -60.50, date: '26 Sep', timeUtc: '14:30', speedKts: 0.6, uncertaintyRadiusKm: 3.0 },
     ],
     predictedTrack: [
-      { lat: -65.20, lon: -60.50, date: '18 Sep', timeUtc: '14:30', speedKts: 0.6, uncertaintyRadiusKm: 3.0 },
-      { lat: -64.70, lon: -60.70, date: '20 Sep', timeUtc: '12:00', speedKts: 0.6, uncertaintyRadiusKm: 8.0 },
-      { lat: -64.20, lon: -60.90, date: '22 Sep', timeUtc: '12:00', speedKts: 0.7, uncertaintyRadiusKm: 15.0 },
+      { lat: -65.20, lon: -60.50, date: '26 Sep', timeUtc: '14:30', speedKts: 0.6, uncertaintyRadiusKm: 3.0 },
+      { lat: -64.70, lon: -60.70, date: '28 Sep', timeUtc: '12:00', speedKts: 0.6, uncertaintyRadiusKm: 8.0 },
+      { lat: -64.20, lon: -60.90, date: '30 Sep', timeUtc: '12:00', speedKts: 0.7, uncertaintyRadiusKm: 15.0 },
     ],
     corridorPolygon: [
       { lat: -65.20, lon: -60.58 },
@@ -565,7 +565,7 @@ export const ICEBERGS: Iceberg[] = [
 ];
 
 // Initial planned route (Direct Bransfield Strait corridor)
-// Note: Intersects predicted A68A trajectory on 21 Sep!
+// Note: Intersects predicted A68A trajectory on 29 Sep!
 export const ROUTE_ORIGINAL: RouteOption = {
   id: 'route-original',
   name: 'Route 1 (Shortest / Direct)',
@@ -641,7 +641,7 @@ export const INITIAL_ALERTS: NavigationAlert[] = [
     id: 'alert-1',
     severity: 'high',
     title: 'Potential iceberg encounter',
-    timestamp: '21 Sep • 14:00 UTC',
+    timestamp: '29 Sep • 14:00 UTC',
     description: 'Predicted trajectory for A68A intersects planned route corridor. Closest point of approach: 4.8 km.',
     distanceKm: 4.8,
     resolved: false,
@@ -650,7 +650,7 @@ export const INITIAL_ALERTS: NavigationAlert[] = [
     id: 'alert-2',
     severity: 'warning',
     title: 'Sea-ice concentration increasing',
-    timestamp: '22 Sep • 06:00 UTC',
+    timestamp: '30 Sep • 06:00 UTC',
     description: 'ConvLSTM forecast indicates marginal ice zone expanding in southern Gerlache Strait (concentration > 65%).',
     resolved: false,
   },
@@ -658,18 +658,18 @@ export const INITIAL_ALERTS: NavigationAlert[] = [
     id: 'alert-3',
     severity: 'info',
     title: 'New observation available',
-    timestamp: '18 Sep • 13:45 UTC',
+    timestamp: '26 Sep • 13:45 UTC',
     description: 'Sentinel-1B SAR synthetic aperture radar swath assimilated into drift model.',
     resolved: false,
   },
 ];
 
 export const TIMELINE_STEPS = [
-  { index: 0, label: '18 Sep', fullDate: '18 Sep 2026', timeUtc: '14:30 UTC', description: 'Present Observation' },
-  { index: 1, label: '19 Sep', fullDate: '19 Sep 2026', timeUtc: '12:00 UTC', description: '+22h Forecast Step' },
-  { index: 2, label: '20 Sep', fullDate: '20 Sep 2026', timeUtc: '12:00 UTC', description: '+46h Forecast Step' },
-  { index: 3, label: '21 Sep', fullDate: '21 Sep 2026', timeUtc: '14:00 UTC', description: '+72h Conflict Window' },
-  { index: 4, label: '22 Sep', fullDate: '22 Sep 2026', timeUtc: '12:00 UTC', description: '+94h Arrival Horizon' },
+  { index: 0, label: '26 Sep', fullDate: '26 Sep 2026', timeUtc: '14:30 UTC', description: 'Present Observation' },
+  { index: 1, label: '27 Sep', fullDate: '27 Sep 2026', timeUtc: '12:00 UTC', description: '+22h Forecast Step' },
+  { index: 2, label: '28 Sep', fullDate: '28 Sep 2026', timeUtc: '12:00 UTC', description: '+46h Forecast Step' },
+  { index: 3, label: '29 Sep', fullDate: '29 Sep 2026', timeUtc: '14:00 UTC', description: '+72h Conflict Window' },
+  { index: 4, label: '30 Sep', fullDate: '30 Sep 2026', timeUtc: '12:00 UTC', description: '+94h Arrival Horizon' },
 ];
 
 export const WEATHER_DATA = {

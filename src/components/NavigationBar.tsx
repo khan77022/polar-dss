@@ -27,6 +27,9 @@ interface NavigationBarProps {
   onToggleChatbot: () => void;
   isChatbotOpen: boolean;
   isAnalyzing?: boolean;
+  onOpenEmergency?: () => void;
+  isEmergencyActive?: boolean;
+  emergencyTypeTitle?: string;
 }
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
@@ -41,6 +44,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   onToggleChatbot,
   isChatbotOpen,
   isAnalyzing = false,
+  onOpenEmergency,
+  isEmergencyActive = false,
+  emergencyTypeTitle,
 }) => {
   const navItems: {
     id: NavPage;
@@ -151,6 +157,22 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
       {/* 3. Right: Hazard Quick Action, Live GNSS UTC & AI Copilot */}
       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 text-xs">
+        {/* POLAR EMERGENCY RESPONSE SYSTEM TRIGGER */}
+        {onOpenEmergency && (
+          <button
+            onClick={onOpenEmergency}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-mono text-[11px] font-bold cursor-pointer transition-all border shadow-md ${
+              isEmergencyActive
+                ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-rose-950 animate-pulse'
+                : 'bg-rose-950/80 hover:bg-rose-900 border-rose-500/50 text-rose-200 hover:text-white shadow-rose-950/40'
+            }`}
+            title="Open Polar Emergency Decision Support System (EDSS)"
+          >
+            <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
+            <span className="font-extrabold">{isEmergencyActive ? '🚨 MAYDAY ACTIVE' : '🚨 EMERGENCY'}</span>
+          </button>
+        )}
+
         {/* Hazard Bypass Action */}
         {hasConflict ? (
           <button

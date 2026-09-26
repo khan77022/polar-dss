@@ -176,7 +176,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ vessel, isRerouted, on
                 PASSAGE BRIEFING: VOYAGE ISEA-44-ANT
               </h2>
               <p className="text-xs text-slate-400">
-                Generated: 18 Sep 2026 • 14:00 UTC | Vessel: {vessel.name} ({vessel.polarClass})
+                Generated: 26 Sep 2026 • 14:00 UTC | Vessel: {vessel.name} ({vessel.polarClass})
               </p>
             </div>
 

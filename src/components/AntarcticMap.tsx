@@ -34,6 +34,8 @@ export interface AntarcticMapProps {
   isRerouted: boolean;
   alternativeRoute?: RouteOption;
   safetyRoute?: RouteOption;
+  emergencyRoute?: RouteOption | null;
+  isEmergencyActive?: boolean;
   hasConflict: boolean;
   onRecalculateRoute?: () => void;
   isRecalculating?: boolean;
@@ -87,6 +89,8 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
   isRerouted,
   alternativeRoute,
   safetyRoute,
+  emergencyRoute,
+  isEmergencyActive,
   hasConflict,
   onRecalculateRoute,
   isRecalculating,
@@ -796,6 +800,63 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
           .bindTooltip(`<strong>${alternativeRoute.name}</strong> (${alternativeRoute.distanceKm} km)`, { sticky: true })
           .addTo(group);
       }
+
+      // RENDER ACTIVE EMERGENCY DIVERSION ROUTE & HAVEN BEACON
+      if (emergencyRoute && emergencyRoute.waypoints.length > 1) {
+        const emergencyCoords: [number, number][] = emergencyRoute.waypoints.map((wp) => [wp.lat, wp.lon]);
+
+        // Glowing red/rose halo underlay
+        L.polyline(emergencyCoords, {
+          color: '#e11d48',
+          weight: 8,
+          opacity: 0.4,
+        }).addTo(group);
+
+        // Core tactical emergency line
+        L.polyline(emergencyCoords, {
+          color: '#f43f5e',
+          weight: 3.5,
+          dashArray: '6, 6',
+          opacity: 0.95,
+        })
+          .bindTooltip(`🚨 <strong>ACTIVE EMERGENCY HAVEN CORRIDOR</strong><br/>${emergencyRoute.name} (${emergencyRoute.distanceKm} km)`, { sticky: true })
+          .addTo(group);
+
+        // Emergency Waypoint pins
+        emergencyRoute.waypoints.forEach((wp, idx) => {
+          if (idx === 0) return; // skip origin (vessel)
+          const isDest = idx === emergencyRoute.waypoints.length - 1;
+          const wpIcon = L.divIcon({
+            className: 'custom-emergency-wp-marker',
+            html: `
+              <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: ${isDest ? '32px' : '22px'};
+                height: ${isDest ? '32px' : '22px'};
+                background: ${isDest ? '#dc2626' : '#091222'};
+                border: 2px solid ${isDest ? '#ffffff' : '#f43f5e'};
+                border-radius: ${isDest ? '50%' : '5px'};
+                color: #ffffff;
+                font-family: monospace;
+                font-size: ${isDest ? '15px' : '10px'};
+                font-weight: bold;
+                box-shadow: 0 0 12px ${isDest ? '#ef4444' : '#f43f5e'};
+                cursor: pointer;
+              ">
+                ${isDest ? '⚓' : `W${idx}`}
+              </div>
+            `,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          });
+
+          L.marker([wp.lat, wp.lon], { icon: wpIcon })
+            .bindTooltip(`🚨 <strong>${isDest ? 'DESTINATION REFUGE ANCHORAGE' : `EMERGENCY WAYPOINT WP-0${idx}`}</strong><br/>Lat: ${Math.abs(wp.lat).toFixed(2)}°S, Lon: ${Math.abs(wp.lon).toFixed(2)}°W`, { sticky: true })
+            .addTo(group);
+        });
+      }
     }
 
     // 8. RENDER RESEARCH VESSEL
@@ -878,6 +939,8 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     currentRoute,
     alternativeRoute,
     safetyRoute,
+    emergencyRoute,
+    isEmergencyActive,
     isRerouted,
     hasConflict,
     icebergs,
@@ -1298,11 +1361,11 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
       {/* 5. LIVE SIMULATION CONTROLS (Floating at Bottom Left) */}
       {showSimControls && (
         <div className="absolute bottom-2.5 left-2.5 z-20 pointer-events-auto">
-          <div className="bg-[#0b1424]/95 backdrop-blur-md border border-cyan-800/60 text-slate-100 rounded-lg shadow-lg p-2.5 flex items-center gap-3 text-xs">
+          <div className="bg-[#0b1424]/95 backdrop-blur-md border border-cyan-800/60 text-slate-100 rounded-lg shadow-lg p-2 sm:p-2.5 flex items-center gap-2 sm:gap-2.5 text-xs">
             {/* Play / Pause */}
             <button
               onClick={() => setIsSimPlaying((prev) => !prev)}
-              className={`px-3 py-1.5 rounded-md font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
                 isSimPlaying
                   ? 'bg-amber-600 hover:bg-amber-700 text-white'
                   : 'bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold shadow-xs'
@@ -1335,7 +1398,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
             {/* Sim Speed Toggle */}
             <div className="flex items-center gap-1 border-l border-slate-800 pl-2">
-              <span className="text-[10px] text-slate-400 font-mono">Rate:</span>
+              <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">Rate:</span>
               {[1, 2, 4].map((spd) => (
                 <button
                   key={spd}
@@ -1352,27 +1415,27 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
             </div>
 
             {/* Voyage Distance and ETA readout */}
-            <div className="hidden sm:flex items-center gap-3 border-l border-slate-800 pl-3 font-mono text-[11px] text-slate-300">
-              <span>Dist: <strong className="text-white">{distTravelledKm}</strong> / {totalRouteDistKm} km</span>
-              <span>Rem: <strong className="text-white">{distRemainingKm} km</strong></span>
+            <div className="hidden lg:flex items-center gap-2.5 border-l border-slate-800 pl-2.5 font-mono text-[11px] text-slate-300 whitespace-nowrap">
+              <span>Dist: <strong className="text-white">{distTravelledKm}</strong>/{totalRouteDistKm}km</span>
+              <span>Rem: <strong className="text-white">{distRemainingKm}km</strong></span>
               <span className="text-cyan-400 font-bold">ETA: {hoursRemaining}h</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* 6. LIVE COORDINATES & TELEMETRY HUD (Bottom Center) */}
-      <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 pointer-events-none hidden md:block">
-        <div className="bg-[#0b1424]/95 backdrop-blur-md border border-cyan-900/60 text-slate-300 font-mono text-[10px] px-3.5 py-1 rounded-md shadow-sm flex items-center gap-3">
-          <span>{vessel.name.split(' ')[0]}: {Math.abs(vesselPos.lat).toFixed(2)}°S, {Math.abs(vesselPos.lon).toFixed(2)}°{vesselPos.lon >= 0 ? 'E' : 'W'}</span>
+      {/* 6. LIVE COORDINATES & TELEMETRY HUD (Floating at Top Center or Bottom Right Offset, fully clear of bottom-left Start Sim controls) */}
+      <div className="absolute bottom-14 left-2.5 sm:bottom-2.5 sm:left-auto sm:right-44 z-20 pointer-events-none hidden md:block">
+        <div className="bg-[#0b1424]/95 backdrop-blur-md border border-cyan-900/60 text-slate-300 font-mono text-[10.5px] px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-2.5 whitespace-nowrap">
+          <span>{vessel.name.split(' ')[0]}: <strong className="text-white">{Math.abs(vesselPos.lat).toFixed(2)}°S, {Math.abs(vesselPos.lon).toFixed(2)}°{vesselPos.lon >= 0 ? 'E' : 'W'}</strong></span>
           <span className="text-slate-700">|</span>
-          <span>Speed: {vessel.speedKts} kts</span>
+          <span>Speed: <strong className="text-white">{vessel.speedKts} kts</strong></span>
           <span className="text-slate-700">|</span>
-          <span>HDG: {vessel.headingDeg}°</span>
+          <span>HDG: <strong className="text-white">{vessel.headingDeg}°</strong></span>
           <span className="text-slate-700">|</span>
-          <span className="text-cyan-400">Escapeability: 88%</span>
+          <span className="text-cyan-400 font-bold">Escape: 88%</span>
           <span className="text-slate-700">|</span>
-          <span className={isRerouted ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+          <span className={isRerouted ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
             {isRerouted ? 'ROUTE 2 BYPASS' : 'HAZARD ON DIRECT'}
           </span>
         </div>

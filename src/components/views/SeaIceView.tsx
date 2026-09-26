@@ -39,11 +39,11 @@ export const SeaIceView: React.FC<SeaIceViewProps> = ({
 
   // Forecast Horizons: Current, +6h, +12h, +24h, +48h
   const horizons = [
-    { label: 'Current', step: 0, time: '18 Sep 14:00' },
-    { label: '+6h', step: 1, time: '18 Sep 20:00' },
-    { label: '+12h', step: 2, time: '19 Sep 02:00' },
-    { label: '+24h', step: 3, time: '19 Sep 14:00' },
-    { label: '+48h', step: 4, time: '20 Sep 14:00' },
+    { label: 'Current', step: 0, time: '26 Sep 14:00' },
+    { label: '+6h', step: 1, time: '26 Sep 20:00' },
+    { label: '+12h', step: 2, time: '27 Sep 02:00' },
+    { label: '+24h', step: 3, time: '27 Sep 14:00' },
+    { label: '+48h', step: 4, time: '28 Sep 14:00' },
   ];
 
   const horizonData: Record<

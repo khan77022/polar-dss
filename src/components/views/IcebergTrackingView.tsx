@@ -50,11 +50,11 @@ export const IcebergTrackingView: React.FC<IcebergTrackingViewProps> = ({
   const [recalcSuccess, setRecalcSuccess] = useState<boolean>(false);
 
   const timelineDates = [
-    { step: 0, label: '18 Sep', time: '14:30 UTC' },
-    { step: 1, label: '19 Sep', time: '12:00 UTC' },
-    { step: 2, label: '20 Sep', time: '12:00 UTC' },
-    { step: 3, label: '21 Sep', time: '14:00 UTC' },
-    { step: 4, label: '22 Sep', time: '12:00 UTC' },
+    { step: 0, label: '26 Sep', time: '14:30 UTC' },
+    { step: 1, label: '27 Sep', time: '12:00 UTC' },
+    { step: 2, label: '28 Sep', time: '12:00 UTC' },
+    { step: 3, label: '29 Sep', time: '14:00 UTC' },
+    { step: 4, label: '30 Sep', time: '12:00 UTC' },
   ];
 
   // Displacement calculation based on current step
