@@ -1,6 +1,7 @@
 export type NavPage =
   | 'cockpit'
   | 'dashboard'
+  | 'astar-gis'
   | 'sea-ice'
   | 'iceberg-tracking'
   | 'route-planning'

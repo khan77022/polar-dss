@@ -16,6 +16,7 @@ import {
   Info,
   Sliders,
   ArrowLeft,
+  Zap,
 } from 'lucide-react';
 import { AntarcticMap } from '../AntarcticMap';
 import { Vessel, Iceberg, RouteOption, NavPage } from '../../types';
@@ -25,6 +26,7 @@ import {
   ROUTE_MAX_SAFETY,
 } from '../../data/polarData';
 import { polarApi } from '../../api/client';
+import { PolarGisGrid, AStarSearchResult } from '../../gis/polarGrid';
 
 interface RoutePlanningViewProps {
   vessel: Vessel;
@@ -37,6 +39,10 @@ interface RoutePlanningViewProps {
   onRecalculateRoute?: () => void;
   onResetRoute?: () => void;
   onNavigateToCockpit?: () => void;
+  gisGrid?: PolarGisGrid;
+  aStarResult?: AStarSearchResult | null;
+  compareAStarResult?: AStarSearchResult | null;
+  onOpenAStarStudio?: () => void;
 }
 
 export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
@@ -50,6 +56,10 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
   onRecalculateRoute,
   onResetRoute,
   onNavigateToCockpit,
+  gisGrid,
+  aStarResult,
+  compareAStarResult,
+  onOpenAStarStudio,
 }) => {
   const [destination, setDestination] = useState<string>('Maitri Station (Queen Maud Land)');
   const [objective, setObjective] = useState<'balanced' | 'shortest' | 'safety'>('balanced');
@@ -133,6 +143,16 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenAStarStudio && (
+            <button
+              onClick={onOpenAStarStudio}
+              className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/60"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              <span>⚡ A* GIS Studio</span>
+            </button>
+          )}
+
           {isRerouted && (
             <button
               onClick={handleReset}
@@ -350,6 +370,9 @@ export const RoutePlanningView: React.FC<RoutePlanningViewProps> = ({
           onRecalculateRoute={handleRecalculate}
           isRecalculating={isAnalyzing}
           className="h-full w-full"
+          aStarResult={aStarResult}
+          compareAStarResult={compareAStarResult}
+          onOpenAStarStudio={onOpenAStarStudio}
         />
       </div>
 

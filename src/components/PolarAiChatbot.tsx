@@ -224,6 +224,7 @@ export const PolarAiChatbot: React.FC<PolarAiChatbotProps> = ({
   isOpen: externalIsOpen,
   onToggleOpen,
   onFocusRoute,
+  onFocusIceberg,
   onOpenVesselConfig,
   layerVisibility,
   onToggleLayer,

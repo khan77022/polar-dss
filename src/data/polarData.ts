@@ -568,8 +568,8 @@ export const ICEBERGS: Iceberg[] = [
 ];
 
 // Initial planned route (Direct Bransfield Strait / Central Channel Track)
-// Strictly in deep open ocean water (>200m to 1,500m depth), completely clearing continental glaciers & islands
-// Note: Intersects predicted A68A iceberg trajectory at Point 4 in central Bransfield Strait!
+// Strictly in deep open ocean seawater (>600m to 1,600m depth), completely clearing continental glaciers & islands
+// Note: Intersects predicted A68A iceberg trajectory at Waypoint 4 in central Bransfield Strait!
 export const ROUTE_ORIGINAL: RouteOption = {
   id: 'route-original',
   name: 'Route 1 (Shortest / Direct Track)',
@@ -583,24 +583,25 @@ export const ROUTE_ORIGINAL: RouteOption = {
   hasConflict: true,
   conflictAtKm: 185,
   waypoints: [
-    { lat: -62.19, lon: -58.98 }, // 1. Maxwell Bay / King George Island departure (Navigable fjord)
-    { lat: -62.45, lon: -59.15 }, // 2. Current vessel position in Bransfield Strait (Deep water >1,200m)
-    { lat: -62.80, lon: -60.20 }, // 3. Central Bransfield Strait axial fairway (Depth >1,200m)
-    { lat: -63.20, lon: -61.20 }, // 4. CONFLICT ZONE: Intersects A68A megaberg drift corridor (CPA 4.8 km)
-    { lat: -63.60, lon: -62.80 }, // 5. Boyd Strait central marine fairway between Smith & Low Island (Depth >500m)
-    { lat: -64.15, lon: -64.50 }, // 6. Open Bellingshausen Sea deep ocean fairway (West of Brabant Island, Depth >1,000m)
-    { lat: -64.85, lon: -65.80 }, // 7. Deep oceanic fairway west of Anvers Island (Depth >1,500m, clear of all land)
-    { lat: -65.65, lon: -67.20 }, // 8. Deep ocean fairway west of Biscoe Islands (Depth >1,200m)
-    { lat: -66.50, lon: -68.90 }, // 9. Seaward oceanic fairway west of Adelaide Island (Depth >1,000m)
-    { lat: -67.30, lon: -70.30 }, // 10. Marguerite Trough outer oceanic approach (Depth >800m)
-    { lat: -67.85, lon: -69.60 }, // 11. Southern oceanic entrance turn into Marguerite Bay (Depth >600m)
-    { lat: -67.75, lon: -68.60 }, // 12. Deep water approach channel to Rothera Point (Depth >300m)
-    { lat: -67.57, lon: -68.12 }, // 13. Rothera Point Anchorage & Wharf (Arrival point in open bay)
+    { lat: -62.30, lon: -59.00 }, // 1. Maxwell Bay Marine Fairway Exit (Open Seawater, Depth >600m)
+    { lat: -62.45, lon: -59.10 }, // 2. Current Vessel Position in Bransfield Strait (Deep water >900m)
+    { lat: -62.75, lon: -59.80 }, // 3. Central Bransfield Strait axial fairway (Depth >1,200m)
+    { lat: -63.00, lon: -60.60 }, // 4. Central Bransfield Basin (>25km south of Livingston Island, Depth >1,500m)
+    { lat: -63.25, lon: -61.40 }, // 5. CONFLICT ZONE: Intersects A68A megaberg trajectory (CPA 4.8 km, Depth >1,300m)
+    { lat: -63.55, lon: -62.50 }, // 6. South of Low Island in deep ocean channel (>25km from land, Depth >900m)
+    { lat: -64.10, lon: -64.20 }, // 7. Open oceanic fairway west of Brabant Island (Depth >1,200m)
+    { lat: -64.85, lon: -65.70 }, // 8. Deep Bellingshausen Sea west of Anvers Island (Depth >1,600m)
+    { lat: -65.65, lon: -67.20 }, // 9. Deep oceanic fairway west of Biscoe Islands (Depth >1,400m)
+    { lat: -66.50, lon: -68.90 }, // 10. Seaward oceanic fairway west of Adelaide Island (Depth >1,200m)
+    { lat: -67.30, lon: -70.30 }, // 11. Marguerite Trough outer oceanic approach (Depth >900m)
+    { lat: -67.85, lon: -69.60 }, // 12. Southern oceanic entrance turn into Marguerite Bay (Depth >650m)
+    { lat: -67.75, lon: -68.70 }, // 13. Deep water approach channel to Rothera Point (Depth >400m)
+    { lat: -67.57, lon: -68.12 }, // 14. Rothera Point Anchorage & Wharf (Open bay water)
   ],
 };
 
-// Rerouted Safe Alternative (Boyd Strait & Outer Bellingshausen Deep Oceanic Fairway)
-// 100% Deep Open Ocean: Bypasses west around Low Island into deep Bellingshausen Sea, completely clearing A68A (CPA 38.5 km)
+// Rerouted Safe Alternative (Central Bransfield Trough & Outer Bellingshausen Deep Oceanic Fairway)
+// 100% Deep Open Seawater: Sails deep Bransfield channel >30km south of Livingston Island, bypasses south of Low Island into open Bellingshausen Sea, completely clearing A68A (CPA 38.5 km)
 export const ROUTE_REROUTED: RouteOption = {
   id: 'route-rerouted',
   name: 'Route 2 (Balanced / Western Bypass)',
@@ -613,19 +614,20 @@ export const ROUTE_REROUTED: RouteOption = {
   recommendedFor: 'Recommended by POLARIS AI Multi-Objective Optimizer (Optimal)',
   hasConflict: false,
   waypoints: [
-    { lat: -62.19, lon: -58.98 }, // 1. Maxwell Bay / King George Island
-    { lat: -62.45, lon: -59.15 }, // 2. Vessel departure position
-    { lat: -62.60, lon: -60.50 }, // 3. Drake Passage / Bransfield northern entrance (Deep water)
-    { lat: -62.90, lon: -61.90 }, // 4. Northwest of Low Island in deep Drake Passage water
-    { lat: -63.40, lon: -63.50 }, // 5. Wide western Boyd Strait bypass (CPA 38.5km from A68A, 100% open water)
-    { lat: -64.20, lon: -65.20 }, // 6. Open Bellingshausen Sea deep ocean (>50 km west of Brabant Island)
-    { lat: -65.05, lon: -66.60 }, // 7. Wide oceanic corridor west of Palmer Archipelago (Depth >1,800m)
-    { lat: -65.90, lon: -68.00 }, // 8. Outer Bellingshausen fairway west of Biscoe Islands (Depth >1,500m)
-    { lat: -66.70, lon: -69.60 }, // 9. Wide seaward fairway west of Adelaide Island (Depth >1,200m)
-    { lat: -67.40, lon: -70.70 }, // 10. Marguerite Trough western oceanic approach (Depth >800m)
-    { lat: -67.85, lon: -69.60 }, // 11. Southern deep water turn into Marguerite Bay (Depth >600m)
-    { lat: -67.70, lon: -68.60 }, // 12. Inner approach fairway
-    { lat: -67.57, lon: -68.12 }, // 13. Rothera Point Anchorage & Wharf
+    { lat: -62.30, lon: -59.00 }, // 1. Maxwell Bay Marine Fairway Exit (Open Seawater, Depth >600m)
+    { lat: -62.45, lon: -59.10 }, // 2. Vessel Position in Bransfield Strait (Deep water >900m)
+    { lat: -62.70, lon: -59.70 }, // 3. Central Bransfield Trough (Depth >1,200m)
+    { lat: -62.95, lon: -60.50 }, // 4. Central Bransfield Basin (>30km south of Livingston Island, Depth >1,600m)
+    { lat: -63.20, lon: -61.50 }, // 5. Western Bypass Entry: diverges west from A68A drift path (Depth >1,400m)
+    { lat: -63.55, lon: -62.80 }, // 6. BYPASS CLEARANCE: deep passage south of Low Island (CPA 38.5km from A68A, Depth >1,100m)
+    { lat: -64.10, lon: -65.00 }, // 7. Open Bellingshausen Sea deep ocean (>70km west of Brabant, Depth >2,000m)
+    { lat: -64.85, lon: -66.20 }, // 8. Wide oceanic corridor west of Anvers Island (Depth >1,800m)
+    { lat: -65.70, lon: -67.70 }, // 9. Outer Bellingshausen fairway west of Biscoe Islands (Depth >1,600m)
+    { lat: -66.55, lon: -69.30 }, // 10. Wide seaward fairway west of Adelaide Island (Depth >1,300m)
+    { lat: -67.35, lon: -70.50 }, // 11. Marguerite Trough western oceanic approach (Depth >900m)
+    { lat: -67.85, lon: -69.60 }, // 12. Southern deep water turn into Marguerite Bay (Depth >650m)
+    { lat: -67.75, lon: -68.70 }, // 13. Inner approach fairway in Marguerite Bay (Depth >400m)
+    { lat: -67.57, lon: -68.12 }, // 14. Rothera Point Anchorage & Wharf (Open bay water)
   ],
 };
 
@@ -643,18 +645,20 @@ export const ROUTE_MAX_SAFETY: RouteOption = {
   recommendedFor: 'Severe katabatic gale or heavy coastal ice choking conditions',
   hasConflict: false,
   waypoints: [
-    { lat: -62.19, lon: -58.98 }, // 1. Maxwell Bay
-    { lat: -62.45, lon: -59.15 }, // 2. Vessel position
-    { lat: -62.30, lon: -61.20 }, // 3. Deep Drake Passage outer waters (Depth >2,500m)
-    { lat: -62.80, lon: -63.40 }, // 4. Wide ocean corridor northwest of Smith Island
-    { lat: -63.60, lon: -65.40 }, // 5. Open Bellingshausen Sea deep basin (Depth >3,000m)
-    { lat: -64.60, lon: -67.20 }, // 6. Deep oceanic trench (>80km west of Anvers Island)
-    { lat: -65.70, lon: -69.00 }, // 7. Clear of all grounded tabular fragments & coastal ice
-    { lat: -66.70, lon: -70.60 }, // 8. Outer Bellingshausen deep waters
-    { lat: -67.50, lon: -71.40 }, // 9. Southwestern seaward entrance to Marguerite Trough
-    { lat: -67.90, lon: -70.20 }, // 10. Marguerite Bay southern deep-water channel
-    { lat: -67.70, lon: -68.60 }, // 11. Inner bay approach
-    { lat: -67.57, lon: -68.12 }, // 12. Rothera Station Anchorage
+    { lat: -62.30, lon: -59.00 }, // 1. Maxwell Bay Marine Fairway Exit (Depth >600m)
+    { lat: -62.45, lon: -59.10 }, // 2. Vessel position in Bransfield Strait (Depth >900m)
+    { lat: -62.70, lon: -59.70 }, // 3. Deep Bransfield Strait (Depth >1,200m)
+    { lat: -63.00, lon: -60.80 }, // 4. Central Bransfield Basin (Depth >1,500m)
+    { lat: -63.35, lon: -62.20 }, // 5. Wide marine fairway south of Low Island (Depth >1,200m)
+    { lat: -63.80, lon: -64.20 }, // 6. Outer oceanic exit into Bellingshausen Basin (Depth >2,500m)
+    { lat: -64.40, lon: -66.00 }, // 7. Far offshore deep ocean (>100km west of Brabant, Depth >3,000m)
+    { lat: -65.20, lon: -67.80 }, // 8. Deep oceanic trench (>80km west of Anvers Island, Depth >2,800m)
+    { lat: -66.10, lon: -69.50 }, // 9. Clear of all grounded tabular fragments (>80km offshore, Depth >2,500m)
+    { lat: -66.90, lon: -71.00 }, // 10. Outer Bellingshausen deep waters (>75km west of Adelaide, Depth >2,000m)
+    { lat: -67.60, lon: -71.60 }, // 11. Southwestern seaward entrance to Marguerite Trough (Depth >1,200m)
+    { lat: -67.90, lon: -70.20 }, // 12. Marguerite Bay southern deep-water channel (Depth >700m)
+    { lat: -67.75, lon: -68.70 }, // 13. Inner bay approach (Depth >400m)
+    { lat: -67.57, lon: -68.12 }, // 14. Rothera Station Anchorage (Open bay water)
   ],
 };
 

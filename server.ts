@@ -3,6 +3,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import {
+  generatePolarGisGrid,
+  runAStarOnGisGrid,
+  PRESET_VESSEL_PROFILES,
+  VesselProfile,
+  findNearestGridCell,
+  checkCellPassability,
+} from './src/gis/polarGrid.js';
 
 dotenv.config();
 
@@ -13,6 +21,9 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json());
+
+// Initialize 2D GIS Navigation Grid for Polar Spatial Search
+const polarGisGrid = generatePolarGisGrid(42, 48);
 
 // Initialize Gemini SDK with User-Agent telemetry
 function getAiClient(): GoogleGenAI | null {
@@ -573,18 +584,19 @@ const VERIFIED_ROUTES = [
     hasConflict: true,
     conflictAtKm: 185,
     waypoints: [
-      { lat: -62.19, lon: -58.98 },
-      { lat: -62.45, lon: -59.15 },
-      { lat: -62.80, lon: -60.20 },
-      { lat: -63.20, lon: -61.20 },
-      { lat: -63.60, lon: -62.80 },
-      { lat: -64.15, lon: -64.50 },
-      { lat: -64.85, lon: -65.80 },
+      { lat: -62.30, lon: -59.00 },
+      { lat: -62.45, lon: -59.10 },
+      { lat: -62.75, lon: -59.80 },
+      { lat: -63.00, lon: -60.60 },
+      { lat: -63.25, lon: -61.40 },
+      { lat: -63.55, lon: -62.50 },
+      { lat: -64.10, lon: -64.20 },
+      { lat: -64.85, lon: -65.70 },
       { lat: -65.65, lon: -67.20 },
       { lat: -66.50, lon: -68.90 },
       { lat: -67.30, lon: -70.30 },
       { lat: -67.85, lon: -69.60 },
-      { lat: -67.75, lon: -68.60 },
+      { lat: -67.75, lon: -68.70 },
       { lat: -67.57, lon: -68.12 },
     ],
     provenance: {
@@ -606,18 +618,19 @@ const VERIFIED_ROUTES = [
     recommendedFor: 'Recommended by POLARIS AI Multi-Objective Optimizer (Optimal)',
     hasConflict: false,
     waypoints: [
-      { lat: -62.19, lon: -58.98 },
-      { lat: -62.45, lon: -59.15 },
-      { lat: -62.60, lon: -60.50 },
-      { lat: -62.90, lon: -61.90 },
-      { lat: -63.40, lon: -63.50 },
-      { lat: -64.20, lon: -65.20 },
-      { lat: -65.05, lon: -66.60 },
-      { lat: -65.90, lon: -68.00 },
-      { lat: -66.70, lon: -69.60 },
-      { lat: -67.40, lon: -70.70 },
+      { lat: -62.30, lon: -59.00 },
+      { lat: -62.45, lon: -59.10 },
+      { lat: -62.70, lon: -59.70 },
+      { lat: -62.95, lon: -60.50 },
+      { lat: -63.20, lon: -61.50 },
+      { lat: -63.55, lon: -62.80 },
+      { lat: -64.10, lon: -65.00 },
+      { lat: -64.85, lon: -66.20 },
+      { lat: -65.70, lon: -67.70 },
+      { lat: -66.55, lon: -69.30 },
+      { lat: -67.35, lon: -70.50 },
       { lat: -67.85, lon: -69.60 },
-      { lat: -67.70, lon: -68.60 },
+      { lat: -67.75, lon: -68.70 },
       { lat: -67.57, lon: -68.12 },
     ],
     provenance: {
@@ -639,17 +652,19 @@ const VERIFIED_ROUTES = [
     recommendedFor: 'Severe katabatic gale or heavy coastal ice choking conditions',
     hasConflict: false,
     waypoints: [
-      { lat: -62.19, lon: -58.98 },
-      { lat: -62.45, lon: -59.15 },
-      { lat: -62.30, lon: -61.20 },
-      { lat: -62.80, lon: -63.40 },
-      { lat: -63.60, lon: -65.40 },
-      { lat: -64.60, lon: -67.20 },
-      { lat: -65.70, lon: -69.00 },
-      { lat: -66.70, lon: -70.60 },
-      { lat: -67.50, lon: -71.40 },
+      { lat: -62.30, lon: -59.00 },
+      { lat: -62.45, lon: -59.10 },
+      { lat: -62.70, lon: -59.70 },
+      { lat: -63.00, lon: -60.80 },
+      { lat: -63.35, lon: -62.20 },
+      { lat: -63.80, lon: -64.20 },
+      { lat: -64.40, lon: -66.00 },
+      { lat: -65.20, lon: -67.80 },
+      { lat: -66.10, lon: -69.50 },
+      { lat: -66.90, lon: -71.00 },
+      { lat: -67.60, lon: -71.60 },
       { lat: -67.90, lon: -70.20 },
-      { lat: -67.70, lon: -68.60 },
+      { lat: -67.75, lon: -68.70 },
       { lat: -67.57, lon: -68.12 },
     ],
     provenance: {
@@ -696,17 +711,96 @@ app.post(['/api/routes/calculate', '/api/v1/routes/calculate'], (req: Request, r
   });
 });
 
+// 2D GIS Navigation Grid Endpoint (Returns spatial bathymetry, widths, and preset ship profiles)
+app.get(['/api/gis/grid', '/api/v1/gis/grid'], (_req: Request, res: Response) => {
+  res.json({
+    dimensions: { rows: polarGisGrid.rows, cols: polarGisGrid.cols, totalCells: polarGisGrid.flatCells.length },
+    bounds: {
+      minLat: polarGisGrid.minLat,
+      maxLat: polarGisGrid.maxLat,
+      minLon: polarGisGrid.minLon,
+      maxLon: polarGisGrid.maxLon,
+      dLat: polarGisGrid.dLat,
+      dLon: polarGisGrid.dLon,
+    },
+    presetVessels: PRESET_VESSEL_PROFILES,
+    cellsSample: polarGisGrid.flatCells.map((c) => ({
+      id: c.id,
+      r: c.r,
+      c: c.c,
+      lat: c.lat,
+      lon: c.lon,
+      depthM: c.depthM,
+      passageWidthM: c.passageWidthM,
+      iceThicknessM: c.iceThicknessM,
+      iceConcentrationPct: c.iceConcentrationPct,
+      terrainType: c.terrainType,
+      name: c.name,
+      isDynamicHazard: Boolean(c.isDynamicHazard),
+    })),
+  });
+});
+
+// A* (A-Star) Spatial Pathfinding API parameterized by Vessel Size, Draft & Beam
+app.post(['/api/routes/astar', '/api/v1/routes/astar'], (req: Request, res: Response) => {
+  const body = req.body || {};
+  const origin = body.origin || { lat: -62.30, lon: -59.00 };
+  const destination = body.destination || { lat: -67.57, lon: -68.12 };
+
+  let vessel: VesselProfile = PRESET_VESSEL_PROFILES[2]; // Default: MV Vasiliy Golovnin (Heavy PC3)
+  if (body.vesselId) {
+    const found = PRESET_VESSEL_PROFILES.find((v) => v.id === body.vesselId);
+    if (found) vessel = { ...found };
+  } else if (body.vesselProfile) {
+    vessel = { ...body.vesselProfile };
+  }
+
+  // Allow custom overrides from request
+  if (typeof body.draftM === 'number') vessel.draftM = body.draftM;
+  if (typeof body.beamM === 'number') vessel.beamM = body.beamM;
+  if (typeof body.icebreakingCapabilityM === 'number') vessel.icebreakingCapabilityM = body.icebreakingCapabilityM;
+
+  const result = runAStarOnGisGrid(polarGisGrid, origin, destination, vessel, {
+    avoidIcebergs: body.avoidIcebergs !== false,
+    safetyMarginM: typeof body.safetyMarginM === 'number' ? body.safetyMarginM : 2.0,
+    iceCostWeight: typeof body.iceCostWeight === 'number' ? body.iceCostWeight : 12.0,
+  });
+
+  res.json({
+    ...result,
+    algorithm: 'Constrained A* Spatial Search on 2D Polar GIS Grid',
+    gridMeta: {
+      rows: polarGisGrid.rows,
+      cols: polarGisGrid.cols,
+      resolutionKm: `${Math.round(polarGisGrid.dLat * 111)}km x ${Math.round(polarGisGrid.dLon * 50)}km`,
+    },
+    constraintsEvaluated: {
+      vesselDraftM: vessel.draftM,
+      vesselBeamM: vessel.beamM,
+      requiredMinDepthM: (vessel.draftM + 2.0).toFixed(1),
+      requiredMinWidthM: (vessel.beamM * 1.35).toFixed(1),
+      maxIceThicknessM: vessel.icebreakingCapabilityM,
+    },
+  });
+});
+
+// Sentinel-1 C-SAR Radar Data Endpoint
+// Live Sentinel-1 SAR State
+let lastSarAcquisitionEpoch = new Date().toISOString();
+let sarPassCounter = 412;
+
 // Sentinel-1 C-SAR Radar Data Endpoint
 app.get(['/api/sar/sentinel1', '/api/v1/sar/sentinel1'], (_req: Request, res: Response) => {
   res.json({
     satellite: 'Copernicus Sentinel-1A / 1B (ESA)',
     instrument: 'C-band Synthetic Aperture Radar (C-SAR)',
-    acquisitionEpoch: '2026-09-26T13:40:00Z',
-    pass: 'Descending Polar Orbit (Track 149 Frame 412)',
-    mode: 'Interferometric Wide Swath (IW)',
-    polarisation: 'Dual VV + VH (Vertical transmit/receive + Cross-pol)',
-    spatialResolution: '5m x 20m',
+    acquisitionEpoch: lastSarAcquisitionEpoch,
+    pass: `Descending Polar Orbit (Track 149 Frame ${sarPassCounter})`,
+    mode: 'IW (Interferometric Wide Swath)',
+    polarisation: 'Dual VV + VH (Co-pol & Cross-pol)',
+    spatialResolution: '5m x 20m Spatial Resolution',
     swathWidthKm: 250,
+    frequencyGhz: 5.405,
     targets: [
       {
         id: 'A68A',
@@ -723,6 +817,8 @@ app.get(['/api/sar/sentinel1', '/api/v1/sar/sentinel1'], (_req: Request, res: Re
         riskLevel: 'high',
         cpaToRoute1Km: 4.8,
         cpaToRoute2Km: 38.5,
+        calvingAlert: 'Active marginal calving detected along NW front (14 trailing growlers 200m–500m)',
+        trailingGrowlersCount: 14,
         provenance: {
           source: 'ESA Copernicus Open Access Hub / Sentinel-1 C-SAR',
           sourceType: 'SYNTHETIC_APERTURE_RADAR',
@@ -740,7 +836,12 @@ app.get(['/api/sar/sentinel1', '/api/v1/sar/sentinel1'], (_req: Request, res: Re
         driftSpeedKts: 0.9,
         driftDirectionDeg: 340,
         radarBackscatterSigma0Db: -15.1,
+        incidenceAngleDeg: 36.8,
         riskLevel: 'medium',
+        cpaToRoute1Km: 42.0,
+        cpaToRoute2Km: 65.0,
+        calvingAlert: 'Stable tabular margins; minimal growler shed detected',
+        trailingGrowlersCount: 2,
         provenance: {
           source: 'ESA Copernicus Sentinel-1',
           sourceType: 'SYNTHETIC_APERTURE_RADAR',
@@ -758,7 +859,12 @@ app.get(['/api/sar/sentinel1', '/api/v1/sar/sentinel1'], (_req: Request, res: Re
         driftSpeedKts: 0.6,
         driftDirectionDeg: 10,
         radarBackscatterSigma0Db: -16.0,
+        incidenceAngleDeg: 41.2,
         riskLevel: 'low',
+        cpaToRoute1Km: 78.0,
+        cpaToRoute2Km: 110.0,
+        calvingAlert: 'Grounded against shoal feature; low kinematic velocity',
+        trailingGrowlersCount: 0,
         provenance: {
           source: 'ESA Copernicus Sentinel-1',
           sourceType: 'SYNTHETIC_APERTURE_RADAR',
@@ -766,6 +872,168 @@ app.get(['/api/sar/sentinel1', '/api/v1/sar/sentinel1'], (_req: Request, res: Re
         },
       },
     ],
+  });
+});
+
+// Refresh / Ingest Sentinel-1 SAR radar pass
+app.post(['/api/sar/sentinel1/refresh', '/api/v1/sar/sentinel1/refresh'], (req: Request, res: Response) => {
+  sarPassCounter += 1;
+  lastSarAcquisitionEpoch = new Date().toISOString();
+  const targetId = req.body?.icebergId || 'A68A';
+
+  res.json({
+    success: true,
+    message: `Downlinked and processed fresh Sentinel-1 C-SAR pass (Track 149 Frame ${sarPassCounter}) for ${targetId}. SAR radar backscatter profile and fragment count updated.`,
+    pass: `Track 149 Frame ${sarPassCounter} (Descending Polar IW)`,
+    epoch: lastSarAcquisitionEpoch,
+    calvingAlert: targetId === 'A68A' ? '14 trailing growlers tracked along NW perimeter; CPA to Route 1 remains 4.8 km' : 'Tabular perimeter stable with minimal calving',
+  });
+});
+
+// Icebergs List Endpoint
+const ICEBERGS_DATA = [
+  {
+    id: 'A68A',
+    name: 'Megaberg A68A',
+    classification: 'Very Large Tabular Fragment',
+    currentPos: { lat: -63.85, lon: -56.20 },
+    dimensionsKm: { length: 82.0, width: 28.0, heightAboveWaterM: 35.0 },
+    submergedKeelDraftM: 210.0,
+    areaSqKm: 2296,
+    driftSpeedKts: 1.4,
+    driftDirectionDeg: 325,
+    riskLevel: 'high',
+    origin: 'Larsen C Ice Shelf (Weddell Sea)',
+    calveYear: 2017,
+    provenance: { source: 'ESA Copernicus Sentinel-1 C-SAR', sourceType: 'SYNTHETIC_APERTURE_RADAR', dataStatus: 'observed' },
+  },
+  {
+    id: 'A76',
+    name: 'A76 Northern Fragment',
+    classification: 'Tabular Megaberg',
+    currentPos: { lat: -66.10, lon: -50.80 },
+    dimensionsKm: { length: 54.0, width: 20.0, heightAboveWaterM: 40.0 },
+    submergedKeelDraftM: 240.0,
+    areaSqKm: 1080,
+    driftSpeedKts: 0.9,
+    driftDirectionDeg: 340,
+    riskLevel: 'medium',
+    origin: 'Ronne Ice Shelf',
+    calveYear: 2021,
+    provenance: { source: 'ESA Copernicus Sentinel-1', sourceType: 'SYNTHETIC_APERTURE_RADAR', dataStatus: 'observed' },
+  },
+  {
+    id: 'D28',
+    name: 'D28 Moo Cow Tabular',
+    classification: 'Medium Tabular',
+    currentPos: { lat: -65.20, lon: -60.50 },
+    dimensionsKm: { length: 30.0, width: 14.0, heightAboveWaterM: 28.0 },
+    submergedKeelDraftM: 168.0,
+    areaSqKm: 420,
+    driftSpeedKts: 0.6,
+    driftDirectionDeg: 10,
+    riskLevel: 'low',
+    origin: 'Amery Ice Shelf',
+    calveYear: 2019,
+    provenance: { source: 'ESA Copernicus Sentinel-1', sourceType: 'SYNTHETIC_APERTURE_RADAR', dataStatus: 'observed' },
+  },
+];
+
+app.get(['/api/icebergs', '/api/v1/icebergs'], (_req: Request, res: Response) => {
+  res.json({
+    items: ICEBERGS_DATA,
+    limit: ICEBERGS_DATA.length,
+    offset: 0,
+    total: ICEBERGS_DATA.length,
+  });
+});
+
+app.get(['/api/icebergs/:id', '/api/v1/icebergs/:id'], (req: Request, res: Response) => {
+  const found = ICEBERGS_DATA.find((b) => b.id.toLowerCase() === req.params.id.toLowerCase()) || ICEBERGS_DATA[0];
+  res.json(found);
+});
+
+// Iceberg Sentinel-1 Observations & History Endpoint
+app.get([
+  '/api/icebergs/:id/observations',
+  '/api/v1/icebergs/:id/observations',
+  '/api/icebergs/:id/history',
+  '/api/v1/icebergs/:id/history',
+], (req: Request, res: Response) => {
+  const id = (req.params.id || 'A68A').toUpperCase();
+  const observations = [
+    {
+      id: `obs-sar-${id}-01`,
+      icebergId: id,
+      sensorName: 'Sentinel-1 C-SAR (Interferometric Wide Swath)',
+      sourceType: 'Synthetic Aperture Radar (SAR)',
+      acquiredAt: lastSarAcquisitionEpoch,
+      currentPos: id === 'A68A' ? { lat: -63.85, lon: -56.20 } : id === 'A76' ? { lat: -66.10, lon: -50.80 } : { lat: -65.20, lon: -60.50 },
+      dimensionsKm: id === 'A68A' ? { length: 82.0, width: 28.0, heightAboveWaterM: 35.0 } : id === 'A76' ? { length: 54.0, width: 20.0, heightAboveWaterM: 40.0 } : { length: 30.0, width: 14.0, heightAboveWaterM: 28.0 },
+      areaSqKm: id === 'A68A' ? 2296 : id === 'A76' ? 1080 : 420,
+      confidence: 0.96,
+      hasPolygonFootprint: true,
+      provenance: { source: 'ESA Copernicus Sentinel-1', sourceType: 'SAR', dataStatus: 'observed' },
+    },
+    {
+      id: `obs-sar-${id}-02`,
+      icebergId: id,
+      sensorName: 'Sentinel-1 C-SAR (Dual Polarisation VV/VH)',
+      sourceType: 'Synthetic Aperture Radar (SAR)',
+      acquiredAt: '2026-09-24T14:10:00Z',
+      currentPos: id === 'A68A' ? { lat: -64.12, lon: -55.80 } : id === 'A76' ? { lat: -66.25, lon: -50.50 } : { lat: -65.35, lon: -60.40 },
+      dimensionsKm: id === 'A68A' ? { length: 82.5, width: 28.2, heightAboveWaterM: 35.0 } : id === 'A76' ? { length: 54.2, width: 20.0, heightAboveWaterM: 40.0 } : { length: 30.0, width: 14.0, heightAboveWaterM: 28.0 },
+      areaSqKm: id === 'A68A' ? 2326 : id === 'A76' ? 1084 : 420,
+      confidence: 0.94,
+      hasPolygonFootprint: true,
+      provenance: { source: 'ESA Copernicus Sentinel-1', sourceType: 'SAR', dataStatus: 'observed' },
+    },
+  ];
+  res.json({
+    items: observations,
+    limit: observations.length,
+    offset: 0,
+    total: observations.length,
+  });
+});
+
+// Iceberg Trajectory Endpoint
+app.get(['/api/icebergs/:id/trajectory', '/api/v1/icebergs/:id/trajectory'], (req: Request, res: Response) => {
+  const id = (req.params.id || 'A68A').toUpperCase();
+  const traj = [
+    { lat: -63.85, lon: -56.20, timestamp: '26 Sep • 14:30 UTC', speedKts: 1.4, uncertaintyRadiusKm: 1.8 },
+    { lat: -63.68, lon: -56.85, timestamp: '27 Sep • 12:00 UTC', speedKts: 1.4, uncertaintyRadiusKm: 3.2 },
+    { lat: -63.50, lon: -57.50, timestamp: '28 Sep • 12:00 UTC', speedKts: 1.35, uncertaintyRadiusKm: 5.6 },
+    { lat: -63.35, lon: -58.20, timestamp: '29 Sep • 14:00 UTC', speedKts: 1.3, uncertaintyRadiusKm: 8.4 },
+    { lat: -63.15, lon: -59.00, timestamp: '30 Sep • 12:00 UTC', speedKts: 1.25, uncertaintyRadiusKm: 12.0 },
+  ];
+  res.json({ items: traj, limit: traj.length, offset: 0, total: traj.length });
+});
+
+// Iceberg Behavior Endpoint
+app.get(['/api/icebergs/:id/behavior', '/api/v1/icebergs/:id/behavior'], (req: Request, res: Response) => {
+  const id = (req.params.id || 'A68A').toUpperCase();
+  res.json({
+    icebergId: id,
+    driftClassification: id === 'A68A' ? 'Rapid Northwesterly Outflow (Weddell-Drake confluence)' : 'Circumpolar Gyre Entrainment',
+    rollProbabilityPct: id === 'A68A' ? 8.4 : 2.1,
+    breakupRisk: id === 'A68A' ? 'high' : 'medium',
+    meltRateCmPerDay: 4.8,
+    keelDraftM: id === 'A68A' ? 210 : id === 'A76' ? 240 : 168,
+    provenance: { source: 'Hydrodynamic Behavior Model', sourceType: 'PHYSICS_SIMULATION', dataStatus: 'predicted' },
+  });
+});
+
+// Trigger ML Pipeline Run
+app.post(['/api/icebergs/:id/external-ml/pipeline-run', '/api/v1/icebergs/:id/external-ml/pipeline-run'], (req: Request, res: Response) => {
+  sarPassCounter += 1;
+  lastSarAcquisitionEpoch = new Date().toISOString();
+  const id = (req.params.id || 'A68A').toUpperCase();
+  res.json({
+    status: 'SUCCESS',
+    message: `Triggered Sentinel-1 C-SAR pass downlink and 48h Bayesian hydrodynamic drift recalculation for ${id}.`,
+    pass: `Track 149 Frame ${sarPassCounter}`,
+    epoch: lastSarAcquisitionEpoch,
   });
 });
 

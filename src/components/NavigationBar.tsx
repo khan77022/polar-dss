@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Compass,
   Snowflake,
@@ -12,6 +11,7 @@ import {
   Bot,
   Radio,
   Eye,
+  Zap,
 } from 'lucide-react';
 import { NavPage, Vessel } from '../types';
 
@@ -61,6 +61,13 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     badgeColor?: string;
   }[] = [
     { id: 'cockpit', label: 'Mission Cockpit', icon: Compass },
+    {
+      id: 'astar-gis',
+      label: 'A* GIS Engine',
+      icon: Zap,
+      badge: 'GIS Grid',
+      badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+    },
     { id: 'sea-ice', label: 'Sea-Ice Forecast', icon: Snowflake },
     {
       id: 'iceberg-tracking',
