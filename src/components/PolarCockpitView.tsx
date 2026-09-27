@@ -52,6 +52,8 @@ import { ModelPerformanceView } from './views/ModelPerformanceView';
 import { PolarVisualsView } from './views/PolarVisualsView';
 import { AlertsPanel } from './AlertsPanel';
 import { PolarEmergencySystem } from './PolarEmergencySystem';
+import { VesselConfigModal } from './VesselConfigModal';
+import { RouteDecisionModal } from './RouteDecisionModal';
 import { EmergencyType, SafeHavenDestination, EMERGENCY_TYPES } from '../data/emergencyData';
 import { Vessel, Iceberg, RouteOption, NavPage } from '../types';
 import {
@@ -76,8 +78,9 @@ export const PolarCockpitView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<NavPage>('cockpit');
 
   // Core System State
-  const [vessel] = useState<Vessel>(RESEARCH_VESSEL);
+  const [vessel, setVessel] = useState<Vessel>(RESEARCH_VESSEL);
   const [selectedIcebergId, setSelectedIcebergId] = useState<string>('A68A');
+  const [isVesselConfigOpen, setIsVesselConfigOpen] = useState<boolean>(false);
 
   // Audit Items 1, 2, 4, 9, 10 State
   const [sarObservation, setSarObservation] = useState<ObservationDto | null>(null);
@@ -105,6 +108,12 @@ export const PolarCockpitView: React.FC = () => {
 
   // AI Chatbot Open State
   const [isChatbotOpen, setIsChatbotOpen] = useState<boolean>(false);
+  const [routeFocusTrigger, setRouteFocusTrigger] = useState<number>(0);
+
+  const handleFocusRoute = () => {
+    setCurrentPage('cockpit');
+    setRouteFocusTrigger((prev) => prev + 1);
+  };
 
   // Toast notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -148,6 +157,11 @@ export const PolarCockpitView: React.FC = () => {
     setTimeout(() => {
       setToastMessage(null);
     }, 3800);
+  };
+
+  const handleSaveVessel = (updatedVessel: Vessel) => {
+    setVessel(updatedVessel);
+    showToast(`Ship specifications updated: ${updatedVessel.name} (${updatedVessel.lengthM}m × ${updatedVessel.beamM}m, ${updatedVessel.polarClass.split(' ')[0]})`);
   };
 
   // Emergency Response Decision Support System State
@@ -291,6 +305,8 @@ export const PolarCockpitView: React.FC = () => {
         onOpenEmergency={() => setIsEmergencyModalOpen(true)}
         isEmergencyActive={isEmergencyActive}
         emergencyTypeTitle={EMERGENCY_TYPES[activeEmergencyType].title}
+        vessel={vessel}
+        onOpenVesselConfig={() => setIsVesselConfigOpen(true)}
       />
       <BackendStatus online={backendOnline} />
 
@@ -615,6 +631,14 @@ export const PolarCockpitView: React.FC = () => {
                       <Share2 className="w-3.5 h-3.5 text-cyan-200" />
                       <span>Share Track with Bridge Crew</span>
                     </button>
+
+                    <button
+                      onClick={() => setIsVesselConfigOpen(true)}
+                      className="col-span-2 p-2 rounded-lg bg-[#0e1a30] hover:bg-cyan-950 border border-cyan-800/70 text-cyan-300 hover:text-cyan-200 font-semibold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+                    >
+                      <Ship className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Configure Ship Dimensions & Specs</span>
+                    </button>
                   </div>
 
                   {/* EMERGENCY DECISION SUPPORT SYSTEM LAUNCHER */}
@@ -718,6 +742,7 @@ export const PolarCockpitView: React.FC = () => {
                 isRecalculating={isAnalyzing}
                 className="w-full h-full"
                 showSimControls={true}
+                focusTrigger={routeFocusTrigger}
               />
             </div>
 
@@ -1284,6 +1309,8 @@ Operational Status: ${isRerouted ? 'CLEARED' : 'AVOIDANCE ACTION MANDATED'}
         onNavigateToPage={setCurrentPage}
         isOpen={isChatbotOpen}
         onToggleOpen={() => setIsChatbotOpen((prev) => !prev)}
+        onFocusRoute={handleFocusRoute}
+        onOpenVesselConfig={() => setIsVesselConfigOpen(true)}
       />
 
       {/* 6. POLAR EMERGENCY DECISION SUPPORT SYSTEM (EDSS) MODAL */}
@@ -1298,6 +1325,14 @@ Operational Status: ${isRerouted ? 'CLEARED' : 'AVOIDANCE ACTION MANDATED'}
         setActiveEmergencyType={setActiveEmergencyType}
         activeDestination={activeEmergencyDestination}
         setActiveDestination={setActiveEmergencyDestination}
+      />
+
+      {/* 7. SHIP DIMENSIONS & POLAR CLASS CONFIGURATION MODAL */}
+      <VesselConfigModal
+        isOpen={isVesselConfigOpen}
+        onClose={() => setIsVesselConfigOpen(false)}
+        vessel={vessel}
+        onSaveVessel={handleSaveVessel}
       />
     </div>
   );

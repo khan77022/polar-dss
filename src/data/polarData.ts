@@ -7,6 +7,9 @@ export const RESEARCH_VESSEL: Vessel = {
   polarClass: 'PC3 (Chartered Polar Heavy Icebreaker - NCPOR)',
   lengthM: 161,
   beamM: 22.8,
+  draftM: 8.5,
+  displacementTons: 16200,
+  icebreakingCapabilityM: 1.5,
   currentPos: { lat: -62.45, lon: -59.10 }, // Bransfield Strait / King George Approach
   speedKts: 12.5,
   headingDeg: 215,
@@ -564,56 +567,69 @@ export const ICEBERGS: Iceberg[] = [
   },
 ];
 
-// Initial planned route (Direct Bransfield Strait corridor)
-// Note: Intersects predicted A68A trajectory on 29 Sep!
+// Initial planned route (Direct Bransfield Strait / Gerlache Marine Channel)
+// Verified Navigable Deep-Water Corridor: Follows natural marine channels (depth >200m)
+// Note: Intersects predicted A68A iceberg trajectory at Point 4 on 29 Sep!
 export const ROUTE_ORIGINAL: RouteOption = {
   id: 'route-original',
-  name: 'Route 1 (Shortest / Direct)',
+  name: 'Route 1 (Shortest / Direct Track)',
   objective: 'shortest',
   distanceKm: 380,
   timeHours: 32,
   fuelLiters: 1450,
   iceRisk: 'High',
   icebergRisk: 'High',
-  recommendedFor: 'Time-critical emergency transit only',
+  recommendedFor: 'Time-critical emergency transit only (A68A Conflict Active)',
   hasConflict: true,
   conflictAtKm: 185,
   waypoints: [
-    { lat: -62.19, lon: -58.98 }, // King George Island (Frei Base)
-    { lat: -62.45, lon: -59.10 }, // Current vessel position
-    { lat: -62.80, lon: -59.60 }, // Enters Bransfield Passage
-    { lat: -63.50, lon: -60.80 }, // CONFLICT ZONE with A68A drift corridor!
-    { lat: -64.77, lon: -64.05 }, // Palmer Station approach (Gerlache Strait)
-    { lat: -66.10, lon: -66.50 }, // Grandidier Channel
-    { lat: -67.57, lon: -68.12 }, // Rothera Research Station
+    { lat: -62.19, lon: -58.98 }, // 1. Maxwell Bay / King George Island departure (Navigable fjord)
+    { lat: -62.45, lon: -59.10 }, // 2. Current MV Vasiliy Golovnin position (Bransfield Strait water)
+    { lat: -62.75, lon: -59.70 }, // 3. Bransfield Strait deep axial trough (Depth >1,200m)
+    { lat: -63.15, lon: -60.40 }, // 4. CONFLICT ZONE: Intersects A68A 15km drift corridor (CPA 4.8 km)
+    { lat: -63.60, lon: -61.40 }, // 5. Marine fairway between Trinity Island & Low Island (Deep water)
+    { lat: -64.10, lon: -62.40 }, // 6. Gerlache Strait northern marine entrance (Navigable channel)
+    { lat: -64.55, lon: -62.95 }, // 7. Mid Gerlache Strait (Glacial fjord deep passage, depth >600m)
+    { lat: -65.10, lon: -64.20 }, // 8. Bismarck Strait / South Anvers Island open water fairway
+    { lat: -65.65, lon: -65.50 }, // 9. Grandidier Channel seaward fairway (Clear of Biscoe Islands)
+    { lat: -66.40, lon: -67.20 }, // 10. Open Bellingshausen Sea coastal transit fairway
+    { lat: -67.15, lon: -68.70 }, // 11. Marguerite Bay northern ocean approach (Depth >400m)
+    { lat: -67.65, lon: -68.60 }, // 12. Marguerite Bay southern deep-water turn to Rothera
+    { lat: -67.57, lon: -68.12 }, // 13. Rothera Point Anchorage & Wharf (Arrival point in open bay)
   ],
 };
 
-// Rerouted Safe Alternative (West of Low Island / Western Bransfield Bypass)
+// Rerouted Safe Alternative (Boyd Strait & Outer Bellingshausen Deep Oceanic Fairway)
+// 100% Deep Open Ocean: Bypasses west of Low Island, completely clearing A68A (CPA 38.5 km)
 export const ROUTE_REROUTED: RouteOption = {
   id: 'route-rerouted',
-  name: 'Route 2 (Balanced / Optimized)',
+  name: 'Route 2 (Balanced / Western Bypass)',
   objective: 'balanced',
   distanceKm: 420,
   timeHours: 36,
   fuelLiters: 1180,
   iceRisk: 'Low',
   icebergRisk: 'Low',
-  recommendedFor: 'Recommended for selected objective',
+  recommendedFor: 'Recommended by POLARIS AI Multi-Objective Optimizer (Optimal)',
   hasConflict: false,
   waypoints: [
-    { lat: -62.19, lon: -58.98 }, // King George Island
-    { lat: -62.45, lon: -59.10 }, // Current vessel position
-    { lat: -62.60, lon: -60.20 }, // Deflects NW around Livingston Island
-    { lat: -63.15, lon: -61.90 }, // Safe deep-water passage avoiding A68A corridor
-    { lat: -64.20, lon: -63.40 }, // Outer Gerlache entry
-    { lat: -64.77, lon: -64.05 }, // Palmer Station corridor
-    { lat: -66.10, lon: -66.50 }, // Grandidier Channel
-    { lat: -67.57, lon: -68.12 }, // Rothera Station
+    { lat: -62.19, lon: -58.98 }, // 1. Maxwell Bay / King George Island
+    { lat: -62.45, lon: -59.10 }, // 2. Current vessel position
+    { lat: -62.65, lon: -60.20 }, // 3. Seaward of Nelson & Robert Islands in deep water
+    { lat: -62.90, lon: -61.40 }, // 4. North of Livingston Island in Drake Passage
+    { lat: -63.35, lon: -62.80 }, // 5. Boyd Strait western deep fairway (Clear of Low Island, CPA 38.5km)
+    { lat: -64.10, lon: -64.20 }, // 6. Open Bellingshausen Sea (West of Brabant & Anvers Islands)
+    { lat: -64.90, lon: -65.60 }, // 7. Deep ocean corridor west of Palmer Archipelago
+    { lat: -65.75, lon: -66.80 }, // 8. Outer Bellingshausen Fairway (West of Renaud Island, depth >1,000m)
+    { lat: -66.60, lon: -68.10 }, // 9. Seaward approach west of Adelaide Island
+    { lat: -67.35, lon: -69.30 }, // 10. Outer entrance to Marguerite Bay (Wide deep-water channel)
+    { lat: -67.70, lon: -68.70 }, // 11. Marguerite Bay southern fairway
+    { lat: -67.57, lon: -68.12 }, // 12. Rothera Point Anchorage & Wharf
   ],
 };
 
-// Route 3: Deep Ocean Safety Track (Lowest ice/iceberg density, longest distance)
+// Route 3: Deep Ocean Safety Track (Max Safety / Lowest Ice Concentration)
+// Far offshore in the deep Drake Passage and Bellingshausen Sea (>80km from any land/ice shelves)
 export const ROUTE_MAX_SAFETY: RouteOption = {
   id: 'route-safety',
   name: 'Route 3 (Lowest Risk / Wide Offshore)',
@@ -623,16 +639,20 @@ export const ROUTE_MAX_SAFETY: RouteOption = {
   fuelLiters: 1300,
   iceRisk: 'Low',
   icebergRisk: 'Very Low',
-  recommendedFor: 'Severe weather / low-visibility conditions',
+  recommendedFor: 'Severe katabatic gale or heavy coastal ice choking conditions',
   hasConflict: false,
   waypoints: [
-    { lat: -62.19, lon: -58.98 },
-    { lat: -62.45, lon: -59.10 },
-    { lat: -62.10, lon: -61.20 }, // Far north into Drake Passage margin
-    { lat: -63.00, lon: -64.50 }, // Deep open ocean
-    { lat: -64.50, lon: -66.20 }, // Clear of all coastal grounded bergs
-    { lat: -66.30, lon: -68.00 }, // Outer Bellingshausen Sea
-    { lat: -67.57, lon: -68.12 }, // Rothera Station
+    { lat: -62.19, lon: -58.98 }, // 1. Maxwell Bay
+    { lat: -62.45, lon: -59.10 }, // 2. Vessel position
+    { lat: -62.30, lon: -60.80 }, // 3. Deep Drake Passage outer waters (Depth >2,500m)
+    { lat: -62.80, lon: -62.80 }, // 4. Wide ocean corridor north-west of Smith Island
+    { lat: -63.60, lon: -65.00 }, // 5. Open Bellingshausen Sea deep basin
+    { lat: -64.60, lon: -66.80 }, // 6. Deep oceanic trench (>80km west of Anvers Island)
+    { lat: -65.60, lon: -68.20 }, // 7. Clear of all grounded tabular fragments & coastal ice
+    { lat: -66.50, lon: -69.60 }, // 8. Outer Bellingshausen deep waters
+    { lat: -67.40, lon: -70.40 }, // 9. Southwestern seaward entrance to Marguerite Bay
+    { lat: -67.80, lon: -69.20 }, // 10. Marguerite Bay southern deep-water channel
+    { lat: -67.57, lon: -68.12 }, // 11. Rothera Station Anchorage
   ],
 };
 

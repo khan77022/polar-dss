@@ -13,7 +13,7 @@ import {
   Radio,
   Eye,
 } from 'lucide-react';
-import { NavPage } from '../types';
+import { NavPage, Vessel } from '../types';
 
 interface NavigationBarProps {
   currentPage: NavPage;
@@ -31,6 +31,8 @@ interface NavigationBarProps {
   onOpenEmergency?: () => void;
   isEmergencyActive?: boolean;
   emergencyTypeTitle?: string;
+  vessel?: Vessel;
+  onOpenVesselConfig?: () => void;
 }
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
@@ -48,6 +50,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   onOpenEmergency,
   isEmergencyActive = false,
   emergencyTypeTitle,
+  vessel,
+  onOpenVesselConfig,
 }) => {
   const navItems: {
     id: NavPage;
@@ -87,7 +91,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       className="h-14 min-h-[56px] max-h-[56px] bg-[#070e1b]/95 border-b border-cyan-500/25 px-3 sm:px-4 flex items-center justify-between z-30 shrink-0 shadow-lg select-none backdrop-blur-md"
     >
       {/* 1. Left: Branding & Vessel Status */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2.5 shrink-0">
         <button
           onClick={() => onSelectPage('cockpit')}
           className="flex items-center gap-2.5 text-left cursor-pointer group"
@@ -107,15 +111,31 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             </div>
             <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5 truncate">
               <span className="text-slate-300 font-semibold truncate max-w-[140px] sm:max-w-none">
-                MV Vasiliy Golovnin
+                {vessel?.name || 'MV Vasiliy Golovnin'}
               </span>
-              <span className="text-cyan-400 font-mono hidden sm:inline">• PC3</span>
+              <span className="text-cyan-400 font-mono hidden sm:inline">
+                • {vessel?.polarClass?.split(' ')[0] || 'PC3'}
+              </span>
               <span className="text-slate-400 font-mono hidden 2xl:inline">
-                | 12.5 kts • HDG 215°
+                | {vessel?.speedKts || 12.5} kts • HDG {vessel?.headingDeg || 215}°
               </span>
             </div>
           </div>
         </button>
+
+        {/* Vessel Dimensions & Configuration Quick Button */}
+        {onOpenVesselConfig && (
+          <button
+            id="btn-edit-ship-details"
+            onClick={onOpenVesselConfig}
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-cyan-950 text-cyan-300 hover:text-cyan-200 border border-cyan-800/60 hover:border-cyan-500/80 text-[10px] font-mono font-bold cursor-pointer transition-all shadow-xs group"
+            title="Edit ship dimensions, length, beam, draft, and polar class"
+          >
+            <Ship className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+            <span>{vessel?.lengthM || 161}m × {vessel?.beamM || 22.8}m</span>
+            <span className="text-[9px] text-cyan-400/80 bg-cyan-950 px-1 rounded border border-cyan-700/50">EDIT SHIP</span>
+          </button>
+        )}
       </div>
 
       {/* 2. Middle: Navigation Bar Tabs */}

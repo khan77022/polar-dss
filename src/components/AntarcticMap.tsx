@@ -41,6 +41,7 @@ export interface AntarcticMapProps {
   isRecalculating?: boolean;
   className?: string;
   showSimControls?: boolean;
+  focusTrigger?: number;
 }
 
 type BasemapType = 'satellite' | 'ocean' | 'chart';
@@ -63,8 +64,14 @@ const BASEMAP_URLS: Record<BasemapType, { url: string; attribution: string; labe
   },
 };
 
-// Sector View Presets (Antarctic Peninsula & Weddell Sea removed as requested)
-const SECTORS = {
+// Sector View Presets with active navigation corridor
+const SECTORS: Record<MapSector, { center: [number, number]; zoom: number; name: string; subtitle: string }> = {
+  'corridor': {
+    center: [-64.2, -61.5] as [number, number],
+    zoom: 6,
+    name: 'Expedition Route Corridor (Drake & Bransfield Strait)',
+    subtitle: 'Active Plot: MV Vasiliy Golovnin, A68A Megaberg & Vanguard Fleet Mesh',
+  },
   'indian-sector': {
     center: [-69.8, 45.0] as [number, number],
     zoom: 4,
@@ -96,6 +103,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
   isRecalculating,
   className = '',
   showSimControls = true,
+  focusTrigger,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -105,7 +113,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
   // User map controls
   const [basemap, setBasemap] = useState<BasemapType>('satellite');
-  const [currentSector, setCurrentSector] = useState<MapSector>('indian-sector');
+  const [currentSector, setCurrentSector] = useState<MapSector>('corridor');
   const [showGuide, setShowGuide] = useState<boolean>(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -206,7 +214,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     if (!mapContainerRef.current) return;
     if (mapInstanceRef.current) return;
 
-    const initialSector = SECTORS['indian-sector'];
+    const initialSector = SECTORS['corridor'];
     const map = L.map(mapContainerRef.current, {
       center: initialSector.center,
       zoom: initialSector.zoom,
@@ -236,6 +244,13 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
     mapInstanceRef.current = map;
 
+    // Auto-fit to active expedition route on initial load
+    if (currentRoute?.waypoints && currentRoute.waypoints.length > 1) {
+      const bounds = L.latLngBounds(currentRoute.waypoints.map((wp) => [wp.lat, wp.lon]));
+      bounds.extend([vessel.currentPos.lat, vessel.currentPos.lon]);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
+    }
+
     // Handle container resize
     const resizeObserver = new ResizeObserver(() => {
       map.invalidateSize();
@@ -248,6 +263,23 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Auto-fit to active route whenever route selection or reroute changes
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    if (currentSector === 'corridor' && currentRoute?.waypoints && currentRoute.waypoints.length > 1) {
+      const bounds = L.latLngBounds(currentRoute.waypoints.map((wp) => [wp.lat, wp.lon]));
+      bounds.extend([vesselPos.lat, vesselPos.lon]);
+      mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
+    }
+  }, [currentRoute?.id, isRerouted, currentSector]);
+
+  // Respond to programmatic focus trigger (from chat or button)
+  useEffect(() => {
+    if (focusTrigger && focusTrigger > 0) {
+      handleFitRoute();
+    }
+  }, [focusTrigger]);
 
   // Update Basemap Tiles when selected
   useEffect(() => {
@@ -273,9 +305,30 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     setCurrentSector(sectorKey);
     const sector = SECTORS[sectorKey];
     if (mapInstanceRef.current && sector) {
-      mapInstanceRef.current.flyTo(sector.center, sector.zoom, { duration: 1.2 });
+      if (sectorKey === 'corridor' && currentRoute?.waypoints?.length > 1) {
+        const bounds = L.latLngBounds(currentRoute.waypoints.map((wp) => [wp.lat, wp.lon]));
+        bounds.extend([vesselPos.lat, vesselPos.lon]);
+        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
+      } else {
+        mapInstanceRef.current.flyTo(sector.center, sector.zoom, { duration: 1.2 });
+      }
     }
     setShowSettingsMenu(false);
+  };
+
+  // Center Map on Active Route (Unmissable visual lock)
+  const handleFitRoute = () => {
+    if (!mapInstanceRef.current) return;
+    setCurrentSector('corridor');
+    const waypoints = (currentRoute?.waypoints && currentRoute.waypoints.length > 1)
+      ? currentRoute.waypoints
+      : [{ lat: -62.19, lon: -58.98 }, { lat: -67.57, lon: -68.12 }];
+    const bounds = L.latLngBounds(waypoints.map((wp) => [wp.lat, wp.lon]));
+    bounds.extend([vesselPos.lat, vesselPos.lon]);
+    if (icebergs[0]?.currentPos) {
+      bounds.extend([icebergs[0].currentPos.lat, icebergs[0].currentPos.lon]);
+    }
+    mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
   };
 
   // Center Map on Vessel
@@ -287,10 +340,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
   // Reset to default Sector view
   const handleResetView = () => {
-    const sector = SECTORS[currentSector];
-    if (mapInstanceRef.current && sector) {
-      mapInstanceRef.current.flyTo(sector.center, sector.zoom, { duration: 1.0 });
-    }
+    handleFitRoute();
   };
 
   // Toggle specific layers
@@ -776,28 +826,172 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
       });
     }
 
-    // 7. RENDER NAVIGATION ROUTES
+    // 7. RENDER NAVIGATION ROUTES (High-Visibility Maritime ECDIS Standard)
     if (layerVisibility.navigationRoutes) {
       if (currentRoute && currentRoute.waypoints.length > 1) {
         const coords: [number, number][] = currentRoute.waypoints.map((wp) => [wp.lat, wp.lon]);
+
+        const underlayColor = isRerouted ? '#059669' : hasConflict ? '#dc2626' : '#0284c7';
+        const trackColor = isRerouted ? '#10b981' : hasConflict ? '#f97316' : '#00e5ff';
+
+        // 1. Broad glowing aura halo underlay (12px)
         L.polyline(coords, {
-          color: isRerouted ? '#94a3b8' : hasConflict ? '#f97316' : '#0284c7',
-          weight: isRerouted ? 2 : 3,
-          dashArray: isRerouted ? '4, 6' : undefined,
-          opacity: isRerouted ? 0.6 : 0.9,
+          color: underlayColor,
+          weight: 12,
+          opacity: 0.45,
+          lineCap: 'round',
+        }).addTo(group);
+
+        // 2. Core crisp vibrant navigation line (4.5px)
+        L.polyline(coords, {
+          color: trackColor,
+          weight: 4.5,
+          opacity: 1.0,
+          lineCap: 'round',
+          lineJoin: 'round',
         })
-          .bindTooltip(`<strong>${currentRoute.name}</strong> (${currentRoute.distanceKm} km)`, { sticky: true })
+          .bindTooltip(`
+            <div style="font-family: sans-serif; font-size: 12px; color: #0f172a; padding: 2px;">
+              <strong style="color: ${trackColor}; font-size: 13px;">${currentRoute.name}</strong><br/>
+              <span>Distance: <strong>${currentRoute.distanceKm} km</strong> • ETA: <strong>${hoursRemaining}h</strong></span><br/>
+              <span>Status: <strong style="color: ${isRerouted ? '#059669' : hasConflict ? '#dc2626' : '#0284c7'};">${isRerouted ? 'Optimal / Safe Bypass' : hasConflict ? '⚠️ A68A Conflict Active' : 'Normal Track'}</strong></span>
+            </div>
+          `, { sticky: true })
           .addTo(group);
+
+        // 3. Directional dashed track overlay for navigation sense
+        L.polyline(coords, {
+          color: '#ffffff',
+          weight: 2,
+          dashArray: '8, 14',
+          opacity: 0.85,
+        }).addTo(group);
+
+        // 4. Render Waypoint Pins along the active route
+        currentRoute.waypoints.forEach((wp, idx) => {
+          const isOrigin = idx === 0;
+          const isDest = idx === currentRoute.waypoints.length - 1;
+          const isConflictPoint = !isRerouted && hasConflict && (idx === 3 || wp.lat === -63.50);
+          const isBypassPoint = isRerouted && (idx === 2 || idx === 3);
+
+          let bg = '#0f172a';
+          let border = trackColor;
+          let label = `WP-0${idx}`;
+          let icon = '';
+          let size = 22;
+
+          if (isOrigin) {
+            bg = '#065f46';
+            border = '#10b981';
+            label = 'ORIGIN';
+            icon = '⚓';
+            size = 28;
+          } else if (isDest) {
+            bg = '#1e3a8a';
+            border = '#38bdf8';
+            label = 'DEST';
+            icon = '🏁';
+            size = 28;
+          } else if (isConflictPoint) {
+            bg = '#7f1d1d';
+            border = '#ef4444';
+            label = 'CONFLICT';
+            icon = '⚠️';
+            size = 28;
+          } else if (isBypassPoint) {
+            bg = '#064e3b';
+            border = '#34d399';
+            label = 'BYPASS';
+            icon = '🛡️';
+            size = 26;
+          }
+
+          const wpMarkerIcon = L.divIcon({
+            className: 'custom-route-wp-pin',
+            html: `
+              <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+              ">
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: ${size}px;
+                  height: ${size}px;
+                  background: ${bg};
+                  border: 2px solid ${border};
+                  border-radius: 50%;
+                  box-shadow: 0 0 10px ${border};
+                  color: white;
+                  font-family: monospace;
+                  font-size: ${size > 22 ? '13px' : '9px'};
+                  font-weight: bold;
+                ">
+                  ${icon || idx}
+                </div>
+                <div style="
+                  margin-top: 2px;
+                  background: rgba(11, 20, 36, 0.92);
+                  border: 1px solid ${border}80;
+                  border-radius: 4px;
+                  padding: 1px 4px;
+                  font-family: monospace;
+                  font-size: 8px;
+                  font-weight: bold;
+                  color: ${border};
+                  white-space: nowrap;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+                ">
+                  ${label}
+                </div>
+              </div>
+            `,
+            iconSize: [40, 42],
+            iconAnchor: [20, size / 2],
+          });
+
+          const wpMarker = L.marker([wp.lat, wp.lon], { icon: wpMarkerIcon }).addTo(group);
+          wpMarker.bindTooltip(`
+            <strong>${isOrigin ? '⚓ Expedition Departure Point' : isDest ? '🏁 Passage Destination Point' : isConflictPoint ? '⚠️ A68A Conflict Intersection Point' : `Waypoint WP-0${idx}`}</strong><br/>
+            Lat: ${Math.abs(wp.lat).toFixed(2)}°S, Lon: ${Math.abs(wp.lon).toFixed(2)}°W<br/>
+            ${isConflictPoint ? '<span style="color:#ef4444;font-weight:bold;">Closest Point of Approach: 4.8 km (Breach)</span>' : ''}
+            ${isBypassPoint ? '<span style="color:#10b981;font-weight:bold;">Western Bypass Margin: 38.5 km (Safe)</span>' : ''}
+          `, { sticky: true });
+        });
+
+        // 5. Pulsing Hazard Alert Ring on Conflict Point (when Route 1 is active with conflict)
+        if (!isRerouted && hasConflict) {
+          L.circle([-63.50, -60.80], {
+            radius: 12000, // 12 km critical buffer
+            color: '#ef4444',
+            weight: 2,
+            dashArray: '4, 4',
+            fillColor: '#dc2626',
+            fillOpacity: 0.25,
+          })
+            .bindTooltip(`
+              <strong style="color: #ef4444;">⚠️ A68A 15km CRITICAL COLLISION CORRIDOR</strong><br/>
+              Direct Route 1 intersects predicted iceberg drift envelope.<br/>
+              <span style="color: #fca5a5;">CPA: 4.8 km • Avoidance Action Mandated</span>
+            `, { sticky: true })
+            .addTo(group);
+        }
       }
 
+      // Alternative Route (shown in semi-transparent contrasting line when available)
       if (alternativeRoute && alternativeRoute.waypoints.length > 1) {
         const coords: [number, number][] = alternativeRoute.waypoints.map((wp) => [wp.lat, wp.lon]);
         L.polyline(coords, {
           color: '#10b981',
-          weight: isRerouted ? 4 : 2,
-          opacity: isRerouted ? 0.95 : 0.65,
+          weight: isRerouted ? 4.5 : 2.5,
+          dashArray: isRerouted ? undefined : '5, 8',
+          opacity: isRerouted ? 0.95 : 0.6,
         })
-          .bindTooltip(`<strong>${alternativeRoute.name}</strong> (${alternativeRoute.distanceKm} km)`, { sticky: true })
+          .bindTooltip(`<strong>${alternativeRoute.name}</strong> (${alternativeRoute.distanceKm} km)<br/>${isRerouted ? 'Active Track' : 'Click "Route 2" in left panel to engage'}`, { sticky: true })
           .addTo(group);
       }
 
@@ -1002,8 +1196,29 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
         )}
       </div>
 
-      {/* 2. TOP-RIGHT: Three-Dot Map Settings Menu & Quick Action Controls */}
-      <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
+      {/* 2. TOP-RIGHT: Quick Action Controls & Three-Dot Map Settings Menu */}
+      <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 sm:gap-2">
+        {/* Instant Fit Route in View Button */}
+        <button
+          id="btn-fit-route-view"
+          onClick={handleFitRoute}
+          className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-mono text-xs font-bold border border-cyan-400/50 shadow-lg cursor-pointer flex items-center gap-1.5 transition-all hover:scale-102"
+          title="Center and fit entire active navigation route in view"
+        >
+          <Crosshair className="w-3.5 h-3.5 text-cyan-200" />
+          <span>🎯 FIT ROUTE</span>
+        </button>
+
+        {/* Center on Vessel Button */}
+        <button
+          onClick={handleCenterVessel}
+          className="px-2 py-1.5 rounded-lg bg-[#0b1424]/90 hover:bg-[#122038] border border-cyan-800/70 text-slate-200 hover:text-white font-mono text-xs font-semibold shadow-md cursor-pointer flex items-center gap-1 transition-all"
+          title="Center on MV Vasiliy Golovnin"
+        >
+          <Ship className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="hidden sm:inline">VESSEL</span>
+        </button>
+
         {/* Three-Dot Dropdown for Map Settings */}
         <div className="relative" ref={mapSettingsRef}>
           <button
@@ -1017,7 +1232,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
             title="Map Settings & Layers"
           >
             <MoreVertical className="w-4 h-4" />
-            <span className="font-mono hidden sm:inline">Map Settings</span>
+            <span className="font-mono hidden sm:inline">Settings</span>
           </button>
 
           {/* Three-Dot Dropdown Popover */}
@@ -1049,6 +1264,26 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
                   <span>Antarctic Sector Preset</span>
                 </div>
                 <div className="grid grid-cols-1 gap-1.5">
+                  <button
+                    onClick={() => handleSelectSector('corridor')}
+                    className={`px-3 py-2 rounded-lg text-xs text-left border transition-all cursor-pointer flex items-center justify-between ${
+                      currentSector === 'corridor'
+                        ? 'bg-cyan-950/80 border-cyan-500 text-cyan-200 shadow-xs ring-1 ring-cyan-500/50'
+                        : 'bg-slate-900/60 hover:bg-slate-800 border-slate-800 text-slate-300'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Compass className="w-4 h-4 text-cyan-400" />
+                      <div>
+                        <div className="font-semibold text-white">Route Corridor (Active Track)</div>
+                        <div className="text-[10px] text-slate-400 font-mono">Bransfield Strait & Drake Passage</div>
+                      </div>
+                    </span>
+                    {currentSector === 'corridor' && (
+                      <span className="text-xs text-cyan-400 font-bold">ACTIVE</span>
+                    )}
+                  </button>
+
                   <button
                     onClick={() => handleSelectSector('indian-sector')}
                     className={`px-3 py-2 rounded-lg text-xs text-left border transition-all cursor-pointer flex items-center justify-between ${

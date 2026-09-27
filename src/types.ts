@@ -94,6 +94,9 @@ export interface Vessel {
   polarClass: string;
   lengthM: number;
   beamM: number;
+  draftM?: number;
+  displacementTons?: number;
+  icebreakingCapabilityM?: number;
   currentPos: LatLon;
   speedKts: number;
   headingDeg: number;
@@ -140,7 +143,7 @@ export interface SeaIceGridPoint extends LatLon {
   iceThicknessM: number;
 }
 
-export type MapSector = 'indian-sector' | 'all-antarctica';
+export type MapSector = 'corridor' | 'indian-sector' | 'all-antarctica';
 
 export interface UserSession {
   id: string;
