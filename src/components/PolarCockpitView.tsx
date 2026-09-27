@@ -64,7 +64,9 @@ import {
   ROUTE_MAX_SAFETY,
   TIMELINE_STEPS,
   AHEAD_VESSELS,
+  WEATHER_DATA,
 } from '../data/polarData';
+import { LayerVisibilityState } from './AntarcticMap';
 import { BackendStatus, useBackendHealth } from './BackendStatus';
 import { polarApi, useBackend, ObservationDto, DashboardSummaryDto, EnvironmentContextDto, IcebergDto, IcebergBehaviorDto } from '../api/client';
 import { icebergFromDto, routeFromDto } from '../api/adapters';
@@ -109,6 +111,30 @@ export const PolarCockpitView: React.FC = () => {
   // AI Chatbot Open State
   const [isChatbotOpen, setIsChatbotOpen] = useState<boolean>(false);
   const [routeFocusTrigger, setRouteFocusTrigger] = useState<number>(0);
+
+  // Active Map Layer Visibility synced across Cockpit, Map, and AI Copilot
+  const [layerVisibility, setLayerVisibility] = useState<LayerVisibilityState>({
+    satellite: true,
+    iceThicknessHeatmap: true,
+    seaIceConcentration: true,
+    iceEdge: true,
+    icebergs: true,
+    trajectories: true,
+    uncertaintyCorridor: true,
+    vessel: true,
+    navigationRoutes: true,
+    forbiddenZones: true,
+    escapeability: true,
+    stations: true,
+    aheadVessels: true,
+  });
+
+  const handleToggleLayer = (layerKey: keyof LayerVisibilityState) => {
+    setLayerVisibility((prev) => ({
+      ...prev,
+      [layerKey]: !prev[layerKey],
+    }));
+  };
 
   const handleFocusRoute = () => {
     setCurrentPage('cockpit');
@@ -743,6 +769,8 @@ export const PolarCockpitView: React.FC = () => {
                 className="w-full h-full"
                 showSimControls={true}
                 focusTrigger={routeFocusTrigger}
+                layerVisibility={layerVisibility}
+                onToggleLayer={handleToggleLayer}
               />
             </div>
 
@@ -1311,6 +1339,9 @@ Operational Status: ${isRerouted ? 'CLEARED' : 'AVOIDANCE ACTION MANDATED'}
         onToggleOpen={() => setIsChatbotOpen((prev) => !prev)}
         onFocusRoute={handleFocusRoute}
         onOpenVesselConfig={() => setIsVesselConfigOpen(true)}
+        layerVisibility={layerVisibility}
+        onToggleLayer={handleToggleLayer}
+        weather={WEATHER_DATA}
       />
 
       {/* 6. POLAR EMERGENCY DECISION SUPPORT SYSTEM (EDSS) MODAL */}

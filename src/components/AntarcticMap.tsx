@@ -24,6 +24,22 @@ import {
 import { Iceberg, Vessel, RouteOption, MapSector } from '../types';
 import { ANTARCTIC_STATIONS, AHEAD_VESSELS, ROUTE_MAX_SAFETY, ROUTE_REROUTED } from '../data/polarData';
 
+export interface LayerVisibilityState {
+  satellite: boolean;
+  iceThicknessHeatmap: boolean;
+  seaIceConcentration: boolean;
+  iceEdge: boolean;
+  icebergs: boolean;
+  trajectories: boolean;
+  uncertaintyCorridor: boolean;
+  vessel: boolean;
+  navigationRoutes: boolean;
+  forbiddenZones: boolean;
+  escapeability: boolean;
+  stations: boolean;
+  aheadVessels: boolean;
+}
+
 export interface AntarcticMapProps {
   vessel: Vessel;
   icebergs: Iceberg[];
@@ -42,6 +58,8 @@ export interface AntarcticMapProps {
   className?: string;
   showSimControls?: boolean;
   focusTrigger?: number;
+  layerVisibility?: LayerVisibilityState;
+  onToggleLayer?: (layerKey: keyof LayerVisibilityState) => void;
 }
 
 type BasemapType = 'satellite' | 'ocean' | 'chart';
@@ -104,6 +122,8 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
   className = '',
   showSimControls = true,
   focusTrigger,
+  layerVisibility: propLayerVisibility,
+  onToggleLayer: propOnToggleLayer,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -118,8 +138,8 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
   const [showSettingsMenu, setShowSettingsMenu] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  // Layer Visibility Controls
-  const [layerVisibility, setLayerVisibility] = useState({
+  // Layer Visibility Controls (uses prop if supplied by parent cockpit, or internal state)
+  const [internalLayerVisibility, setInternalLayerVisibility] = useState<LayerVisibilityState>({
     satellite: true,
     iceThicknessHeatmap: true, // Real-time ice thickness heatmap layer
     seaIceConcentration: true,
@@ -134,6 +154,8 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     stations: true,
     aheadVessels: true,
   });
+
+  const layerVisibility = propLayerVisibility ?? internalLayerVisibility;
 
   // Close three-dot menu when clicking outside
   useEffect(() => {
@@ -344,18 +366,19 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
   };
 
   // Toggle specific layers
-  const toggleLayer = (layerKey: keyof typeof layerVisibility) => {
-    setLayerVisibility((prev) => ({
-      ...prev,
-      [layerKey]: !prev[layerKey],
-    }));
+  const toggleLayer = (layerKey: keyof LayerVisibilityState) => {
+    if (propOnToggleLayer) {
+      propOnToggleLayer(layerKey);
+    } else {
+      setInternalLayerVisibility((prev) => ({
+        ...prev,
+        [layerKey]: !prev[layerKey],
+      }));
+    }
   };
 
   const toggleAheadVessels = () => {
-    setLayerVisibility((prev) => ({
-      ...prev,
-      aheadVessels: !prev.aheadVessels,
-    }));
+    toggleLayer('aheadVessels');
   };
 
   // -------------------------------------------------------------
@@ -376,6 +399,20 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
       // A. Contoured Ice Thickness Polygons across the Antarctic shelf
       // 1. Extreme Critical Ice Shelf Hazard Zones (>3.0m - 4.8m) - Deep Crimson
       const extremeThicknessZones: { coords: [number, number][]; label: string; thicknessRange: string; stressKPa: number }[] = [
+        // Navigation Corridor: Larsen C & Weddell Sea Compressive Fast-Ice Pack
+        {
+          coords: [
+            [-64.0 - stepDrift, -57.2],
+            [-65.2 - stepDrift, -58.8],
+            [-66.8, -60.0],
+            [-66.5, -55.2],
+            [-64.4, -54.0],
+          ],
+          label: 'Larsen C & Weddell Sea Compressive Fast-Ice Pack',
+          thicknessRange: '3.6m - 4.8m',
+          stressKPa: 910,
+        },
+        // Indian Sector: Amery Ice Shelf Grounding Ridge
         {
           coords: [
             [-68.3 - stepDrift, 69.8],
@@ -388,6 +425,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
           thicknessRange: '3.8m - 4.6m',
           stressKPa: 840,
         },
+        // Indian Sector: Princess Astrid Coast Fast-Ice Barrier
         {
           coords: [
             [-69.7 - stepDrift * 0.5, 9.8],
@@ -430,6 +468,18 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
       // 2. Moderate Ice Thickness Hazard Pack (1.5m - 2.8m) - Amber / Orange
       const moderateThicknessZones: { coords: [number, number][]; label: string; thicknessRange: string }[] = [
+        // Navigation Corridor: Eastern Bransfield & Joinville Outflow Ice Field
+        {
+          coords: [
+            [-62.8 - stepDrift, -56.5],
+            [-63.8 - stepDrift, -58.5],
+            [-64.5, -60.0],
+            [-63.6, -55.8],
+          ],
+          label: 'Eastern Bransfield & Joinville Outflow Ice Field',
+          thicknessRange: '1.6m - 2.4m',
+        },
+        // Indian Sector: Prydz Bay / Larsemann Outer Pack Floes
         {
           coords: [
             [-67.3 - stepDrift, 69.2],
@@ -440,6 +490,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
           label: 'Prydz Bay / Larsemann Outer Pack Floes',
           thicknessRange: '1.8m - 2.4m',
         },
+        // Indian Sector: Lazarev Marginal Sea Ice Pack
         {
           coords: [
             [-68.4 - stepDrift * 0.5, 7.2],
@@ -477,6 +528,22 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
       // 3. Low Thickness Navigable Leads (0.3m - 1.0m) - Emerald / Cyan
       const lowThicknessLeads: { coords: [number, number][]; label: string; thicknessRange: string }[] = [
+        // Navigation Corridor: Boyd Strait & Bellingshausen Deep-Water Navigable Leads
+        {
+          coords: [
+            [-62.8, -61.0],
+            [-63.4, -63.6],
+            [-64.3, -65.4],
+            [-65.4, -67.2],
+            [-66.6, -69.2],
+            [-66.2, -67.8],
+            [-64.8, -64.8],
+            [-63.2, -62.0],
+          ],
+          label: 'Boyd Strait & Bellingshausen Deep-Water Navigable Leads',
+          thicknessRange: '0.4m - 0.8m',
+        },
+        // Indian Sector: Inter-Station Lead Corridor
         {
           coords: [
             [-66.0, 32.0],
@@ -517,6 +584,15 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
       // B. High-Density Radar Altimeter Thickness Soundings (CryoSat-2 SARIn & Sentinel-3)
       const thicknessSoundings: { lat: number; lon: number; depthM: number; rating: 'LEAD' | 'FIRST_YEAR' | 'HEAVY' | 'HAZARD' }[] = [
+        // Active Route Corridor (Bransfield, Boyd Strait, Bellingshausen Sea)
+        { lat: -63.2, lon: -61.2, depthM: 1.8, rating: 'HEAVY' }, // Near A68A hazard zone
+        { lat: -62.9, lon: -58.5, depthM: 2.6, rating: 'HAZARD' }, // Weddell outflow
+        { lat: -63.4, lon: -63.2, depthM: 0.5, rating: 'LEAD' }, // Boyd Strait bypass
+        { lat: -64.2, lon: -65.2, depthM: 0.4, rating: 'LEAD' }, // Bellingshausen deep ocean
+        { lat: -65.0, lon: -66.5, depthM: 0.6, rating: 'LEAD' }, // West of Anvers Island
+        { lat: -65.8, lon: -67.8, depthM: 0.5, rating: 'LEAD' }, // West of Biscoe Islands
+        { lat: -66.6, lon: -69.4, depthM: 0.7, rating: 'LEAD' }, // West of Adelaide Island
+        { lat: -67.5, lon: -68.4, depthM: 0.8, rating: 'LEAD' }, // Marguerite Bay approach
         // Prydz Bay / Bharati Approach
         { lat: -69.2, lon: 76.5, depthM: 0.6, rating: 'LEAD' },
         { lat: -69.7, lon: 75.9, depthM: 2.2, rating: 'HEAVY' },
@@ -581,6 +657,44 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     if (layerVisibility.seaIceConcentration) {
       const stepOffset = timelineStep * 0.12;
 
+      // 0. Active Route Corridor: Weddell Sea / Larsen C Dense Multi-Year Pack (>75% Conc.)
+      const weddellIcePolygon: [number, number][] = [
+        [-63.6 - stepOffset, -55.0],
+        [-64.5 - stepOffset, -57.5],
+        [-66.8, -59.8],
+        [-66.5, -53.5],
+        [-64.2, -52.8],
+      ];
+      L.polygon(weddellIcePolygon, {
+        color: '#dc2626',
+        weight: 1.5,
+        fillColor: '#bae6fd',
+        fillOpacity: 0.45,
+        dashArray: '3, 3',
+      })
+        .bindTooltip('<strong>Heavy Weddell Pack Ice (>75% Conc.)</strong><br/>Multi-year floes and compressive ice pressure fronting Larsen C Ice Shelf.', { sticky: true })
+        .addTo(group);
+
+      // 0b. Active Route Corridor: Boyd Strait & Bellingshausen Sea Navigable Leads (15% - 30%)
+      const corridorLeadsPolygon: [number, number][] = [
+        [-62.8, -60.8],
+        [-63.5, -63.6],
+        [-64.4, -65.6],
+        [-65.5, -67.4],
+        [-66.8, -69.5],
+        [-66.3, -67.8],
+        [-64.8, -64.6],
+        [-63.1, -61.6],
+      ];
+      L.polygon(corridorLeadsPolygon, {
+        color: '#10b981',
+        weight: 1,
+        fillColor: '#a7f3d0',
+        fillOpacity: 0.25,
+      })
+        .bindTooltip('<strong>Open Water & Navigable Leads (15% - 30%)</strong><br/>Route 2 Western Bypass corridor; optimal fuel conservation and clear of A68A.', { sticky: true })
+        .addTo(group);
+
       // A. Indian Sector: High Concentration Pack Ice in Prydz Bay / Amery Margin (>65%)
       const prydzBayIcePolygon: [number, number][] = [
         [-67.5 - stepOffset, 71.0],
@@ -636,6 +750,13 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
       // D. Sea Ice Grid Cells (Simulated Sentinel-1 / SAR Raster Cells)
       const gridSamples: { lat: number; lon: number; conc: number; status: string }[] = [
+        // Navigation Corridor
+        { lat: -63.2, lon: -60.8, conc: 62, status: 'Medium' },
+        { lat: -63.5, lon: -63.2, conc: 22, status: 'Low' },
+        { lat: -64.4, lon: -65.2, conc: 16, status: 'Low' },
+        { lat: -64.5, lon: -56.5, conc: 78, status: 'High' },
+        { lat: -65.6, lon: -67.2, conc: 20, status: 'Low' },
+        // Indian Sector
         { lat: -68.8, lon: 74.5, conc: 72, status: 'High' },
         { lat: -69.2, lon: 76.0, conc: 48, status: 'Medium' },
         { lat: -68.4, lon: 45.0, conc: 18, status: 'Low' },
@@ -664,6 +785,23 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
     // 2. RENDER ICE EDGE BOUNDARY
     if (layerVisibility.iceEdge) {
+      // A. Active Navigation Corridor: Marginal Ice Edge (15% Sea-Ice Extent in Drake/Bransfield approach)
+      const corridorIceEdge: [number, number][] = [
+        [-61.6, -65.0],
+        [-62.1, -63.0],
+        [-62.5, -60.0],
+        [-62.8, -57.5],
+        [-63.2, -54.0],
+      ];
+      L.polyline(corridorIceEdge, {
+        color: '#38bdf8',
+        weight: 3,
+        dashArray: '6, 6',
+      })
+        .bindTooltip('<strong>Marginal Ice Edge (15% Sea-Ice Extent Boundary)</strong><br/>Drake Passage / Bransfield Strait approach boundary.', { sticky: true })
+        .addTo(group);
+
+      // B. Indian Sector: Marginal Ice Edge
       const iceEdgeCoords: [number, number][] = [
         [-66.2, 5.0],
         [-66.8, 20.0],
@@ -683,6 +821,25 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
     // 3. RENDER FORBIDDEN FUTURE ZONES
     if (layerVisibility.forbiddenZones) {
+      // A. Peninsula Corridor: Weddell Sea / Prince Gustav / Larsen C Fast-Ice Choke Wall
+      const forbiddenZonePeninsula: [number, number][] = [
+        [-64.0, -58.2],
+        [-64.9, -59.8],
+        [-66.0, -61.2],
+        [-66.5, -60.0],
+        [-65.2, -56.8],
+      ];
+      L.polygon(forbiddenZonePeninsula, {
+        color: '#b91c1c',
+        weight: 2,
+        fillColor: '#ef4444',
+        fillOpacity: 0.35,
+        dashArray: '4, 4',
+      })
+        .bindTooltip('<strong>⛔ High-Risk Forbidden Zone (Weddell / Larsen Fast-Ice)</strong><br/>Compressive ice pressure & fast-ice thickness >3.5m exceeds PC3 hull limits.', { sticky: true })
+        .addTo(group);
+
+      // B. Indian Sector: Prydz Bay Fast-Ice Barrier
       const forbiddenZoneA: [number, number][] = [
         [-68.0, 71.5],
         [-68.8, 75.5],
@@ -703,6 +860,10 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     // 4. RENDER ESCAPEABILITY VECTORS
     if (layerVisibility.escapeability) {
       const escapeVectors: { from: [number, number]; to: [number, number]; score: number; label: string }[] = [
+        // Navigation Corridor Exits
+        { from: [-63.4, -62.8], to: [-62.2, -64.2], score: 95, label: 'Drake Passage Deepwater Escape Corridor (Score: 95%)' },
+        { from: [-65.5, -67.5], to: [-64.6, -70.2], score: 91, label: 'Bellingshausen Deep Oceanic Exit (Score: 91%)' },
+        // Indian Sector Exits
         { from: [-68.8, 72.0], to: [-66.5, 68.0], score: 92, label: 'Northern Deepwater Exit (Score: 92%)' },
         { from: [-69.8, 12.0], to: [-67.5, 10.0], score: 86, label: 'Offshore Open Leads Exit (Score: 86%)' },
       ];
@@ -965,7 +1126,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
         // 5. Pulsing Hazard Alert Ring on Conflict Point (when Route 1 is active with conflict)
         if (!isRerouted && hasConflict) {
-          L.circle([-63.50, -60.80], {
+          L.circle([-63.20, -61.20], {
             radius: 12000, // 12 km critical buffer
             color: '#ef4444',
             weight: 2,

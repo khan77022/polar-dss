@@ -19,8 +19,9 @@ import {
   Check,
 } from 'lucide-react';
 import { ChatMessage, Vessel, Iceberg, RouteOption } from '../types';
-import { AHEAD_VESSELS, INDIAN_POLAR_HUBS } from '../data/polarData';
+import { AHEAD_VESSELS, INDIAN_POLAR_HUBS, WEATHER_DATA } from '../data/polarData';
 import { polarApi, useBackend } from '../api/client';
+import { LayerVisibilityState } from './AntarcticMap';
 
 interface PolarAiChatbotProps {
   vessel: Vessel;
@@ -35,6 +36,9 @@ interface PolarAiChatbotProps {
   onToggleOpen?: () => void;
   onFocusRoute?: () => void;
   onOpenVesselConfig?: () => void;
+  layerVisibility?: LayerVisibilityState;
+  onToggleLayer?: (layerKey: keyof LayerVisibilityState) => void;
+  weather?: typeof WEATHER_DATA;
 }
 
 const INITIAL_MESSAGES: ChatMessage[] = [
@@ -220,6 +224,9 @@ export const PolarAiChatbot: React.FC<PolarAiChatbotProps> = ({
   onToggleOpen,
   onFocusRoute,
   onOpenVesselConfig,
+  layerVisibility,
+  onToggleLayer,
+  weather = WEATHER_DATA,
 }) => {
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(false);
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
@@ -289,50 +296,129 @@ export const PolarAiChatbot: React.FC<PolarAiChatbotProps> = ({
   // Quick Action Prompts
   const quickPrompts = [
     {
+      label: '🌡️ Temperature & Weather',
+      query: 'What is the temperature now and what is the current weather, wind, and sea state?',
+    },
+    {
+      label: '🌊 Is Path on the Ice?',
+      query: 'Check if this path goes on or above the ice. Is the route strictly in navigable blue water?',
+    },
+    {
+      label: '🗺️ What Layers are Active?',
+      query: 'What map layers are currently active and how do the ice thickness and sea ice layers work?',
+    },
+    {
+      label: '🧭 Why Route 2 Decision?',
+      query: 'Why did the decision engine choose Route 2 Western Bypass over Route 1?',
+    },
+    {
+      label: '🚢 Vessels Ahead (V-PIREP)',
+      query: 'What are PRV Sagar Dhruv and other scout vessels ahead reporting about ice and leads on our route?',
+    },
+    {
+      label: '⚠️ Assess A68A Threat',
+      query: 'Evaluate the collision risk of iceberg A68A on Route 1 and provide the recommended bypass.',
+    },
+    {
+      label: '⛽ Route 1 vs 2 Fuel',
+      query: 'Compare the fuel burn, time, and safety trade-offs between Route 1 (Direct) and Route 2 (Western Bypass).',
+    },
+    {
       label: '🧠 Who Decides the Path?',
       query: 'Who decides the path and what is going on in the backend route decision engine?',
     },
     {
-      label: '🌊 Is the Path on the Ice?',
-      query: 'Check if this path is on the ice or land. Is the route through navigable water channels?',
-    },
-    {
-      label: '🎯 Where is the Route?',
-      query: 'Where is our navigation route on the map and what are the waypoints?',
-    },
-    {
-      label: '🕒 Time & Chrono Check',
-      query: 'What is the current UTC time, bridge time, and passage ETA?',
-    },
-    {
-      label: '🚢 What is my Ship Size?',
+      label: '🚢 Ship Dimensions',
       query: 'What is my ship size, dimensions, and polar class rating?',
-    },
-    {
-      label: '⚠️ Assess A68A Threat & Bypass',
-      query: 'Evaluate the collision risk of iceberg A68A on Route 1 and provide the recommended bypass.',
-    },
-    {
-      label: '🚢 Vessels Ahead Intel (V-PIREP)',
-      query: 'What are PRV Sagar Dhruv and other scout vessels ahead reporting about ice and leads on our route?',
-    },
-    {
-      label: '⛽ Route 1 vs 2 Fuel & Safety',
-      query: 'Compare the fuel burn, time, and safety trade-offs between Route 1 (Direct) and Route 2 (Western Bypass).',
-    },
-    {
-      label: '🇮🇳 Indian Bases Status',
-      query: 'What are the current logistics and sea-ice conditions at Bharati and Maitri research stations?',
-    },
-    {
-      label: '🧠 Explain ConvLSTM AI Model',
-      query: 'Explain how the ConvLSTM spatiotemporal model predicts sea-ice concentration and its validation metrics.',
     },
   ];
 
   // Tactical In-Browser Expert Reasoning Engine (Zero-latency fallback grounded in real state)
   const generateExpertAnswer = (userQuery: string): { text: string; actionTag?: any; actionLabel?: string } => {
     const q = userQuery.toLowerCase();
+
+    // Weather and Temperature queries (including common typos like "temprature")
+    if (
+      q.includes('temp') ||
+      q.includes('temprature') ||
+      q.includes('temperature') ||
+      q.includes('weather') ||
+      q.includes('wind') ||
+      q.includes('wave') ||
+      q.includes('spray') ||
+      q.includes('cold') ||
+      q.includes('celsius') ||
+      q.includes('climate')
+    ) {
+      const w = weather || WEATHER_DATA;
+      return {
+        text: `### 🌡️ Live Meteorological & Environmental Telemetry
+**Expedition Flagship:** ${vessel.name} (Bransfield / Drake Approach)
+**Observation Epoch:** 26 Sep 2026 • Live Polar Hydrographic Station
+
+- **Ambient Air Temperature:** **${w.airTemperatureC}°C** (Effective Wind Chill: **-21.4°C**)
+- **Sea Surface Temperature (SST):** **${w.seaSurfaceTempC}°C** (Seawater supercooling baseline: -1.8°C)
+- **True Wind Vector:** **${w.windSpeedKts} knots** (${w.windSpeedKmh} km/h) from **${w.windDirection}**, gusting to 24 kts
+- **Wave & Swell Height:** **${w.waveHeightM} meters** (Swell Period: ${w.wavePeriodS} s)
+- **Barometric Surface Pressure:** **${w.surfacePressureHpa} hPa** (Stable Antarctic maritime depression)
+- **Visibility:** **${w.visibility}** in central channel
+- **Freezing Spray Index:** **${w.freezingSprayRisk}** (De-icing steam active on foredeck windlass)
+
+**Ahead Fleet Weather Intel:**
+- **PRV Sagar Dhruv** (48 km ahead): Air **-13.8°C**, Wind 22 kts WNW, swell 1.8m
+- **ORV Sagar Kanya** (115 km ahead): Air **-15.2°C**, Wind 28 kts NW, swell 2.4m`,
+        actionTag: 'weather',
+        actionLabel: '📊 Open Full Weather Telemetry',
+      };
+    }
+
+    // Layer-based Query Handler
+    if (
+      q.includes('layer') ||
+      q.includes('layers') ||
+      q.includes('heatmap') ||
+      q.includes('satellite') ||
+      q.includes('thickness') ||
+      q.includes('concentration') ||
+      q.includes('edge')
+    ) {
+      const currentLayers = layerVisibility || {
+        satellite: true,
+        iceThicknessHeatmap: true,
+        seaIceConcentration: true,
+        iceEdge: true,
+        icebergs: true,
+        trajectories: true,
+        uncertaintyCorridor: true,
+        vessel: true,
+        navigationRoutes: true,
+        forbiddenZones: true,
+        escapeability: true,
+        stations: true,
+        aheadVessels: true,
+      };
+
+      const activeList = Object.entries(currentLayers)
+        .filter(([, v]) => v)
+        .map(([k]) => k);
+
+      return {
+        text: `### 🗺️ GIS Layer Engine & Cockpit Overlay Status
+The POLAR DSS map displays real-time multi-spectral satellite & sensor overlays:
+
+1. **🛰️ Satellite Imagery Basemap:** Ultra-high resolution Esri/Maxar World Imagery.
+2. **🧊 Ice Thickness Heatmap (CryoSat-2 SARIn):** Highlights navigable leads (0.4m - 0.8m in green) vs thick compressive fast-ice ridges (>3.0m in crimson).
+3. **📊 Sea-Ice Concentration (ConvLSTM AI Matrix):** 48h forward forecast showing open leads (<25%) through Boyd Strait and heavy pack (>75%) in the Weddell Sea.
+4. **⚠️ High-Risk Forbidden Zones:** Compressive pack ice zones exceeding PC3 structural thresholds.
+5. **🟢 Dynamic Escapeability Vectors:** Open water extraction vectors (92% confidence Northern Deepwater Exit).
+6. **🏔️ Iceberg Drift & 95% Bayesian Corridors:** Real-time tracking of megabergs **A68A**, **A76**, and **D28**.
+7. **🚢 Vanguard Fleet Mesh (V-PIREP):** Cooperative vessel telemetry from PRV Sagar Dhruv and ORV Sagar Kanya.
+
+*Active Layer Count:* **${activeList.length} overlays enabled**. You can toggle individual layers from the map controls menu at any time.`,
+        actionTag: 'sea-ice',
+        actionLabel: '🧊 Inspect Sea-Ice & Thickness Layers',
+      };
+    }
 
     // Who Decides the Path Query Handler
     if (
@@ -367,17 +453,20 @@ export const PolarAiChatbot: React.FC<PolarAiChatbotProps> = ({
       q.includes('in the ice') ||
       q.includes('over the ice') ||
       q.includes('through the ice') ||
+      q.includes('above the ice') ||
+      q.includes('above ice') ||
       q.includes('land') ||
       q.includes('glacier') ||
       (q.includes('path') && q.includes('ice')) ||
       (q.includes('route') && q.includes('ice'))
     ) {
       return {
-        text: `### 🌊 Marine Fairway Guarantee: Is the Path on the Ice?
-- **Navigable Seawater Only**: All 3 plotted routes navigate strictly through **certified marine fairways** (Bransfield Strait, Boyd Strait, Open Bellingshausen Sea, and Marguerite Bay). Every waypoint is positioned in deep water (soundings between $200\\,\\text{m}$ and $1,200\\,\\text{m}$) and **never crosses any continental land, islands, or ice shelves**.
-- **Why Satellite Imagery Looks Like White Ice**: In Antarctica, satellite base imagery shows glaciated islands (Brabant, Anvers, Adelaide) and landmasses as solid white. Earlier sparse straight-line segments passed too close to these islands. The backend navigation plot has now been updated with 12-13 dense marine fairways that curve naturally through deep oceanic troughs.
-- **Navigable Sea-Ice vs Glaciers**: While the vessel never touches land ice or glaciers, it sails through **floating seasonal sea ice** (concentration 35-45%), which **${vessel.name}** easily negotiates using its **${vessel.polarClass.split(' ')[0]} icebreaker hull** (certified for up to 1.5m level ice).
-- **Route 1 vs Route 2 Navigation**: Route 1 passes through the narrow Bransfield Strait (where A68A threatens collision). Route 2 routes out into the **open Bellingshausen Sea deep ocean basin** (>80km from coastal ice), which is 100% open water.`,
+        text: `### 🌊 Marine Fairway Guarantee: Does the Path Go on the Ice?
+- **Navigable Seawater Only**: All 3 plotted routes navigate strictly through **certified deep-water marine fairways** (Bransfield Strait, Boyd Strait, Open Bellingshausen Sea, and Marguerite Bay). Every waypoint is located in open water (soundings between $200\\,\\text{m}$ and $2,500\\,\\text{m}$) and **NEVER crosses any continental land, glaciers, or ice shelves**.
+- **No Path Above the Ice**: Ships are marine vessels; they cannot travel over landfast ice, continental ice sheets, or mountains. The path curves through open oceanic troughs west of the glaciated islands.
+- **Why It Looked Like Ice on Satellite Imagery**: In Antarctica, satellite basemaps show glaciated islands (Brabant, Anvers, Adelaide) and landmasses as solid white. Earlier sparse straight-line segments passed too close to these islands. The navigation engine has corrected all waypoints into dense deep-water marine corridors (>200m to 1,500m depth) that stay 100% in the dark blue ocean.
+- **Navigable Sea-Ice vs Glaciers**: While the vessel never touches land ice or glaciers, it sails through **floating seasonal sea ice** (concentration 35-45%), which **${vessel.name}** easily navigates using its **${vessel.polarClass.split(' ')[0]} icebreaker hull** (certified for up to 1.5m level ice).
+- **Route 1 vs Route 2**: Route 1 passes through central Bransfield Strait (where A68A threatens collision). Route 2 navigates out into the **open Bellingshausen Sea deep ocean basin** (>50km from coastal ice), which is 100% open water.`,
         actionTag: isRerouted ? 'corridor' : 'reroute',
         actionLabel: isRerouted ? '🎯 Focus on Deep-Water Track' : '⚡ Engage Route 2 (Western Bypass)',
       };
@@ -601,6 +690,10 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
     try {
       const payload = {
         message: query,
+        history: messages.slice(-6).map((m) => ({
+          role: m.sender === 'assistant' ? 'model' : 'user',
+          text: m.text,
+        })),
         context: {
           vesselName: vessel.name,
           vesselPos: vessel.currentPos,
@@ -617,6 +710,16 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
           timelineStep,
           currentRouteName: currentRoute.name,
           icebergHazard: icebergs[0]?.name,
+          layers: layerVisibility,
+          weather: weather || WEATHER_DATA,
+          decisionContext: {
+            selectedRoute: currentRoute.name,
+            isRerouted,
+            hasConflict,
+            clearanceA68AKm: isRerouted ? 38.5 : 4.8,
+            fuelSavingsL: isRerouted ? 270 : 0,
+            pathTerrainGuarantee: 'Strictly deep open ocean waters (>200m depth); zero path over continental ice or land.',
+          },
           vanguardVesselsAhead: AHEAD_VESSELS.map((v) => ({
             name: v.vesselName,
             distanceAheadKm: v.distanceAheadKm,
@@ -627,7 +730,7 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
       };
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
 
       // Call server-side full-stack endpoint
       const res = await fetch('/api/chat', {
@@ -676,6 +779,25 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
   };
 
   const handleActionClick = (actionTag?: string) => {
+    if (!actionTag) return;
+
+    if (actionTag.startsWith('toggle:')) {
+      const layerKey = actionTag.replace('toggle:', '') as keyof LayerVisibilityState;
+      if (onToggleLayer) {
+        onToggleLayer(layerKey);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `sys-${Date.now()}`,
+            sender: 'system',
+            timestamp: 'NOW',
+            text: `🗺️ **Layer Toggled**: ${layerKey} visibility updated on main map.`,
+          },
+        ]);
+      }
+      return;
+    }
+
     if (actionTag === 'corridor' || actionTag === 'focus-route') {
       if (onFocusRoute) {
         onFocusRoute();
