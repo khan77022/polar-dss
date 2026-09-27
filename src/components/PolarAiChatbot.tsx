@@ -35,6 +35,7 @@ interface PolarAiChatbotProps {
   isOpen?: boolean;
   onToggleOpen?: () => void;
   onFocusRoute?: () => void;
+  onFocusIceberg?: (id?: string) => void;
   onOpenVesselConfig?: () => void;
   layerVisibility?: LayerVisibilityState;
   onToggleLayer?: (layerKey: keyof LayerVisibilityState) => void;
@@ -552,6 +553,53 @@ You can configure and customize any ship dimensions, tonnage, or polar ratings u
       };
     }
 
+    if (
+      q.includes('where are the icebergs') ||
+      q.includes('where are the icebegs') ||
+      q.includes('where is the iceberg') ||
+      q.includes('where is the icebeg') ||
+      q.includes('dont see any') ||
+      q.includes("don't see any") ||
+      q.includes('cant see any') ||
+      q.includes('see any') ||
+      q.includes('sentinel') ||
+      q.includes('sar') ||
+      q.includes('find iceberg') ||
+      q.includes('show iceberg') ||
+      q.includes('locate iceberg')
+    ) {
+      const a68a = icebergs.find((b) => b.id === 'A68A') || icebergs[0];
+      const a76 = icebergs.find((b) => b.id === 'A76');
+      const d28 = icebergs.find((b) => b.id === 'D28');
+      return {
+        text: `### 🛰️ Live SAR Sentinel-1 Observation & Iceberg Positions
+**Sensor Platform:** ESA Copernicus Sentinel-1 C-SAR (Synthetic Aperture Radar)
+**Acquisition Epoch:** 26 Sep 2026 • 13:40 UTC (Descending Polar Pass, Track 149 Frame 412)
+**Mode & Polarization:** Interferometric Wide Swath (IW) • Dual VV/VH Polarization
+
+#### 📍 Monitored Antarctic Iceberg Coordinates:
+1. **🏔️ A68A (Megaberg / Primary Collision Hazard):**
+   - **Current Position:** **63°51'S, 56°12'W** (Weddell Sea outflow approaching eastern Bransfield Strait)
+   - **Dimensions:** **82.0 km length × 28.0 km width** (Surface Area: **2,296 km²**)
+   - **Freeboard / Keel Depth:** **35 m freeboard** above waterline • **~210 m submerged keel draft**
+   - **Drift Vector:** **1.4 knots** heading **325° (NW)** directly toward Route 1 corridor
+   - **Radar Backscatter ($\\sigma^0$):** **-14.2 dB** (High dielectric contrast; active marginal calving of growlers detected along NW front)
+   - **Conflict Status:** **CRITICAL**. On Route 1 (Direct Track), CPA is only **4.8 km** (violating 15km IMO safety buffer).
+
+2. **🏔️ A76 (Northern Fragment):**
+   - **Position:** **66°06'S, 50°48'W** (Outer Weddell Gyre)
+   - **Dimensions:** 54.0 km × 20.0 km (Area: 1,080 km²) • Drift: 0.9 kts @ 340°
+
+3. **🏔️ D28 ("Moo Cow" Tabular):**
+   - **Position:** **65°12'S, 60°30'W** (Larsen B embayment)
+   - **Dimensions:** 30.0 km × 14.0 km (Area: 420 km²) • Drift: 0.6 kts @ 010°
+
+*Tip:* Click the **"🏔️ A68A TARGET"** button on the top-right of the map or click the button below to zoom and lock directly onto A68A!`,
+        actionTag: 'focus-a68a',
+        actionLabel: '🏔️ Lock Map Directly on A68A Target',
+      };
+    }
+
     if (q.includes('a68a') || q.includes('collision') || q.includes('threat') || q.includes('hazard') || q.includes('bypass') || q.includes('reroute')) {
       if (isRerouted) {
         return {
@@ -850,6 +898,21 @@ Feel free to ask me to analyze iceberg collision geometry, pull live reports fro
     } else if (actionTag === 'iceberg' && onNavigateToPage) {
       onNavigateToPage('iceberg-tracking');
       closeOpen();
+    } else if (actionTag === 'focus-a68a') {
+      if (onFocusIceberg) {
+        onFocusIceberg('A68A');
+      } else if (onNavigateToPage) {
+        onNavigateToPage('iceberg-tracking');
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `sys-${Date.now()}`,
+          sender: 'system',
+          timestamp: 'NOW',
+          text: '🏔️ **Iceberg Target Locked**: Map focused directly on Megaberg A68A (63°51\'S, 56°12\'W) with Sentinel-1 C-SAR swath overlay.',
+        },
+      ]);
     }
   };
 

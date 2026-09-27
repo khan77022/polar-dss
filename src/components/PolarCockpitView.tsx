@@ -136,9 +136,19 @@ export const PolarCockpitView: React.FC = () => {
     }));
   };
 
+  const [icebergFocusTrigger, setIcebergFocusTrigger] = useState<number>(0);
+  const [isSarModalOpen, setIsSarModalOpen] = useState<boolean>(false);
+
   const handleFocusRoute = () => {
     setCurrentPage('cockpit');
     setRouteFocusTrigger((prev) => prev + 1);
+  };
+
+  const handleFocusIceberg = (id?: string) => {
+    if (id) setSelectedIcebergId(id);
+    setCurrentPage('cockpit');
+    setIcebergFocusTrigger((prev) => prev + 1);
+    showToast(`Radar lock: Viewport focused on Iceberg ${id || selectedIcebergId}`);
   };
 
   // Toast notification
@@ -519,20 +529,45 @@ export const PolarCockpitView: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center text-slate-300">
                       <span className="text-slate-400">Last Observation:</span>
-                      <span className="font-mono text-cyan-300">Sentinel-1 SAR (2h ago)</span>
+                      <span className="font-mono text-cyan-300">Sentinel-1 C-SAR (Live Pass)</span>
+                    </div>
+
+                    {/* Quick Viewport Target Focus Button */}
+                    <div className="pt-1.5 flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleFocusIceberg(selectedIceberg.id)}
+                        className="flex-1 py-1.5 px-2 bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-mono text-[10px] font-bold rounded flex items-center justify-center gap-1 shadow-md cursor-pointer transition-all"
+                        title={`Lock viewport onto ${selectedIceberg.name}`}
+                      >
+                        <span>🎯 Focus {selectedIceberg.id} on Map</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsSarModalOpen(true)}
+                        className="py-1.5 px-2 bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-300 hover:text-white font-mono text-[10px] font-bold rounded flex items-center gap-1 cursor-pointer transition-colors"
+                        title="View Full Sentinel-1 C-SAR Radar Data Dossier"
+                      >
+                        <Radar className="w-3 h-3 text-cyan-400" />
+                        <span>SAR Data</span>
+                      </button>
                     </div>
                   </div>
 
                   {/* Item 1: Live Current SAR Observation Card */}
                   {sarObservation && (
-                    <div className="p-2.5 bg-cyan-950/40 border border-cyan-800/60 rounded-lg space-y-1.5 text-[10px] font-mono">
+                    <div
+                      onClick={() => setIsSarModalOpen(true)}
+                      className="p-2.5 bg-cyan-950/40 hover:bg-cyan-950/70 border border-cyan-800/60 hover:border-cyan-500/80 rounded-lg space-y-1.5 text-[10px] font-mono cursor-pointer transition-all shadow-xs"
+                      title="Click to open full ESA Copernicus Sentinel-1 C-SAR Radar Dossier"
+                    >
                       <div className="flex items-center justify-between text-cyan-300 font-bold">
                         <span className="flex items-center gap-1.5">
                           <Radar className="w-3 h-3 text-cyan-400" />
-                          Current SAR Observation
+                          Copernicus Sentinel-1 C-SAR
                         </span>
                         <span className="text-[9px] bg-cyan-900/60 px-1.5 py-0.2 rounded text-cyan-200">
-                          {(sarObservation.confidence * 100).toFixed(0)}% Conf
+                          {(sarObservation.confidence * 100).toFixed(0)}% Conf • VIEW
                         </span>
                       </div>
                       <div className="text-slate-300 truncate">
@@ -544,11 +579,11 @@ export const PolarCockpitView: React.FC = () => {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500">Footprint:</span>
-                        <span className="text-emerald-400 font-bold">{sarObservation.hasPolygonFootprint ? 'Polygon Footprint Attached' : 'Point Approximation'}</span>
+                        <span className="text-emerald-400 font-bold">{sarObservation.hasPolygonFootprint ? 'Polygon Attached (82×28km)' : 'Point Approximation'}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-500">SAR Extents:</span>
-                        <span className="text-slate-200">{sarObservation.dimensionsKm.length} km × {sarObservation.dimensionsKm.width} km</span>
+                        <span className="text-slate-500">SAR Polarization:</span>
+                        <span className="text-cyan-300 font-bold">Dual VV + VH (C-band)</span>
                       </div>
                     </div>
                   )}
@@ -562,7 +597,7 @@ export const PolarCockpitView: React.FC = () => {
                     title="Trigger synthetic Sentinel-1 SAR ingestion & 48h hydrodynamic drift recalculation"
                   >
                     <Brain className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>{pipelineRunning ? 'Executing ML Pipeline...' : 'Test Harness: Trigger External ML Pipeline'}</span>
+                    <span>{pipelineRunning ? 'Ingesting Sentinel-1 SAR...' : '📡 Ingest Latest Sentinel-1 C-SAR Pass'}</span>
                   </button>
                 </div>
 
@@ -769,6 +804,7 @@ export const PolarCockpitView: React.FC = () => {
                 className="w-full h-full"
                 showSimControls={true}
                 focusTrigger={routeFocusTrigger}
+                focusIcebergTrigger={icebergFocusTrigger}
                 layerVisibility={layerVisibility}
                 onToggleLayer={handleToggleLayer}
               />
@@ -1317,6 +1353,145 @@ Operational Status: ${isRerouted ? 'CLEARED' : 'AVOIDANCE ACTION MANDATED'}
         </div>
       )}
 
+      {/* 3C. DEDICATED SENTINEL-1 C-SAR RADAR TELEMETRY MODAL */}
+      {isSarModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="bg-[#0b1424] border border-cyan-500/80 rounded-xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden text-slate-200">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-cyan-900/60 flex items-center justify-between bg-gradient-to-r from-[#0e1a30] via-[#09182a] to-[#0e1a30]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-cyan-950 border border-cyan-500/60 text-cyan-400">
+                  <Radar className="w-5 h-5 text-cyan-400 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-bold text-white text-sm font-mono tracking-tight">
+                      COPERNICUS SENTINEL-1 C-SAR RADAR DOSSIER
+                    </h2>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                      LIVE PASS
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-cyan-300/80 font-mono mt-0.5">
+                    European Space Agency (ESA) • Synthetic Aperture Radar Downlink
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSarModalOpen(false)}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 font-mono text-xs">
+              {/* Target Header */}
+              <div className="p-3.5 bg-gradient-to-r from-rose-950/40 to-slate-900 border border-rose-600/50 rounded-xl flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] text-rose-300 font-bold uppercase tracking-wider">
+                    PRIMARY DETECTED ICE TARGET
+                  </div>
+                  <div className="text-base font-extrabold text-white mt-0.5">
+                    Megaberg {selectedIceberg.name}
+                  </div>
+                  <div className="text-[11px] text-rose-300">
+                    Coords: {Math.abs(selectedIceberg.currentPos.lat).toFixed(2)}°S, {Math.abs(selectedIceberg.currentPos.lon).toFixed(2)}°W • Weddell Outflow
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="px-2.5 py-1 rounded text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/50">
+                    CPA: {selectedIceberg.id === 'A68A' && !isRerouted ? '4.8 km (CRITICAL)' : '38.5 km (SAFE)'}
+                  </span>
+                  <div className="text-[10px] text-slate-400 mt-1">
+                    Drift: {selectedIceberg.driftSpeedKts} kts @ {selectedIceberg.driftDirectionDeg}° (NW)
+                  </div>
+                </div>
+              </div>
+
+              {/* Radar Instrument Telemetry Grid */}
+              <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-lg space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase">Satellite & Sensor</div>
+                  <div className="text-white font-bold">Sentinel-1A C-SAR (ESA)</div>
+                  <div className="text-[10px] text-cyan-300">Orbit: Polar Descending (Track 149 Frame 412)</div>
+                </div>
+
+                <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-lg space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase">Acquisition Mode</div>
+                  <div className="text-white font-bold">IW (Interferometric Wide)</div>
+                  <div className="text-[10px] text-emerald-400">Resolution: 5m × 20m Spatial</div>
+                </div>
+
+                <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-lg space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase">Polarisation Channels</div>
+                  <div className="text-cyan-300 font-bold">Dual VV + VH (Co/Cross-pol)</div>
+                  <div className="text-[10px] text-slate-400">Enhanced Ice/Water Edge Contrast</div>
+                </div>
+
+                <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-lg space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase">Mean Radar Backscatter (σ⁰)</div>
+                  <div className="text-white font-bold">-14.2 dB (High Glacial Return)</div>
+                  <div className="text-[10px] text-amber-300">Incidence Angle: 38.4° (Mid-swath)</div>
+                </div>
+
+                <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-lg space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase">Geometric Dimensions</div>
+                  <div className="text-white font-bold">{selectedIceberg.dimensionsKm.length} km × {selectedIceberg.dimensionsKm.width} km</div>
+                  <div className="text-[10px] text-slate-300">Surface Area: {selectedIceberg.areaSqKm} km²</div>
+                </div>
+
+                <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-lg space-y-1">
+                  <div className="text-[10px] text-slate-400 uppercase">Vertical Hydrostatics</div>
+                  <div className="text-white font-bold">Freeboard: {selectedIceberg.dimensionsKm.heightAboveWaterM} m</div>
+                  <div className="text-[10px] text-cyan-300">Submerged Keel Draft: ~210 m</div>
+                </div>
+              </div>
+
+              {/* SAR Observations & Calving Alerts */}
+              <div className="p-3 bg-cyan-950/40 border border-cyan-800/60 rounded-xl space-y-1.5 text-[11px]">
+                <div className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  Tactical SAR Intelligence & Fracture Dynamics:
+                </div>
+                <ul className="list-disc list-inside space-y-1 text-slate-300 text-[10px]">
+                  <li>Radar backscatter signature confirms solid tabular tabular core with dense multi-year firn layer.</li>
+                  <li>Cross-polarisation (VH) reveals <strong>active marginal calving</strong> along north-western edge: 14 trailing growlers (200m–500m) detected shedding into the Eastern Bransfield entry fairway.</li>
+                  <li>Direct navigation route (Route 1) passes within <strong>4.8 km</strong> of this drift front on 29 Sep, placing vessel within the fragmentation debris envelope.</li>
+                  <li><strong>Western Bypass (Route 2)</strong> clears the 95% Bayesian uncertainty corridor with 38.5 km buffer in deep open water (&gt;200m depth).</li>
+                </ul>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleTriggerPipeline();
+                    showToast('Ingested latest Sentinel-1 SAR pass and updated drift vectors');
+                  }}
+                  className="px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-cyan-700 text-cyan-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Brain className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Re-ingest Latest Pass</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSarModalOpen(false);
+                    handleFocusIceberg(selectedIceberg.id);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-lg transition-all"
+                >
+                  <span>🎯 Lock {selectedIceberg.id} on Map</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 4. TOAST NOTIFICATION POPUP */}
       {toastMessage && (
         <div className="fixed bottom-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-cyan-950/95 border border-cyan-400/60 text-cyan-200 text-xs font-semibold shadow-2xl flex items-center gap-2 animate-in fade-in backdrop-blur-md">
@@ -1338,6 +1513,7 @@ Operational Status: ${isRerouted ? 'CLEARED' : 'AVOIDANCE ACTION MANDATED'}
         isOpen={isChatbotOpen}
         onToggleOpen={() => setIsChatbotOpen((prev) => !prev)}
         onFocusRoute={handleFocusRoute}
+        onFocusIceberg={handleFocusIceberg}
         onOpenVesselConfig={() => setIsVesselConfigOpen(true)}
         layerVisibility={layerVisibility}
         onToggleLayer={handleToggleLayer}

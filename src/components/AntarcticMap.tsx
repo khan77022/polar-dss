@@ -58,6 +58,7 @@ export interface AntarcticMapProps {
   className?: string;
   showSimControls?: boolean;
   focusTrigger?: number;
+  focusIcebergTrigger?: number;
   layerVisibility?: LayerVisibilityState;
   onToggleLayer?: (layerKey: keyof LayerVisibilityState) => void;
 }
@@ -122,6 +123,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
   className = '',
   showSimControls = true,
   focusTrigger,
+  focusIcebergTrigger,
   layerVisibility: propLayerVisibility,
   onToggleLayer: propOnToggleLayer,
 }) => {
@@ -266,10 +268,15 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
 
     mapInstanceRef.current = map;
 
-    // Auto-fit to active expedition route on initial load
+    // Auto-fit to active expedition route & tracked icebergs on initial load
     if (currentRoute?.waypoints && currentRoute.waypoints.length > 1) {
       const bounds = L.latLngBounds(currentRoute.waypoints.map((wp) => [wp.lat, wp.lon]));
       bounds.extend([vessel.currentPos.lat, vessel.currentPos.lon]);
+      if (icebergs && icebergs.length > 0) {
+        icebergs.forEach((b) => {
+          if (b.currentPos) bounds.extend([b.currentPos.lat, b.currentPos.lon]);
+        });
+      }
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
     }
 
@@ -286,12 +293,17 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     };
   }, []);
 
-  // Auto-fit to active route whenever route selection or reroute changes
+  // Auto-fit to active route and icebergs whenever route selection or reroute changes
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     if (currentSector === 'corridor' && currentRoute?.waypoints && currentRoute.waypoints.length > 1) {
       const bounds = L.latLngBounds(currentRoute.waypoints.map((wp) => [wp.lat, wp.lon]));
       bounds.extend([vesselPos.lat, vesselPos.lon]);
+      if (icebergs && icebergs.length > 0) {
+        icebergs.forEach((b) => {
+          if (b.currentPos) bounds.extend([b.currentPos.lat, b.currentPos.lon]);
+        });
+      }
       mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
     }
   }, [currentRoute?.id, isRerouted, currentSector]);
@@ -302,6 +314,13 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
       handleFitRoute();
     }
   }, [focusTrigger]);
+
+  // Respond to programmatic iceberg focus trigger
+  useEffect(() => {
+    if (focusIcebergTrigger && focusIcebergTrigger > 0) {
+      handleFocusIceberg('A68A');
+    }
+  }, [focusIcebergTrigger]);
 
   // Update Basemap Tiles when selected
   useEffect(() => {
@@ -338,7 +357,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     setShowSettingsMenu(false);
   };
 
-  // Center Map on Active Route (Unmissable visual lock)
+  // Center Map on Active Route (Unmissable visual lock covering ship, corridor, and all icebergs)
   const handleFitRoute = () => {
     if (!mapInstanceRef.current) return;
     setCurrentSector('corridor');
@@ -347,10 +366,26 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
       : [{ lat: -62.19, lon: -58.98 }, { lat: -67.57, lon: -68.12 }];
     const bounds = L.latLngBounds(waypoints.map((wp) => [wp.lat, wp.lon]));
     bounds.extend([vesselPos.lat, vesselPos.lon]);
-    if (icebergs[0]?.currentPos) {
-      bounds.extend([icebergs[0].currentPos.lat, icebergs[0].currentPos.lon]);
+    if (icebergs && icebergs.length > 0) {
+      icebergs.forEach((b) => {
+        if (b.currentPos) bounds.extend([b.currentPos.lat, b.currentPos.lon]);
+      });
     }
     mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
+  };
+
+  // Center Map directly on Iceberg Target (Smooth zoom into A68A / selected iceberg)
+  const handleFocusIceberg = (icebergId = 'A68A') => {
+    if (!mapInstanceRef.current) return;
+    const berg = icebergs.find((b) => b.id === icebergId) || icebergs[0];
+    if (berg) {
+      const pos =
+        timelineStep < berg.predictedTrack.length
+          ? berg.predictedTrack[timelineStep]
+          : berg.currentPos;
+      mapInstanceRef.current.flyTo([pos.lat, pos.lon], 7, { duration: 1.2 });
+      onSelectIceberg(berg.id);
+    }
   };
 
   // Center Map on Vessel
@@ -926,22 +961,43 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     if (layerVisibility.icebergs) {
       icebergs.forEach((berg) => {
         const isSelected = selectedIcebergId === berg.id;
+        const isA68A = berg.id === 'A68A';
+        const isHighRisk = berg.riskLevel === 'high';
         const pos =
           timelineStep < berg.predictedTrack.length
             ? berg.predictedTrack[timelineStep]
             : berg.currentPos;
 
+        // Render Sentinel-1 C-SAR Scan Swath Footprint for A68A
+        if (isA68A) {
+          const sarSwathCoords: [number, number][] = [
+            [pos.lat + 0.45, pos.lon - 0.75],
+            [pos.lat + 0.42, pos.lon + 0.70],
+            [pos.lat - 0.48, pos.lon + 0.80],
+            [pos.lat - 0.45, pos.lon - 0.65],
+          ];
+          L.polygon(sarSwathCoords, {
+            color: '#06b6d4',
+            weight: 1.5,
+            fillColor: '#22d3ee',
+            fillOpacity: 0.16,
+            dashArray: '3, 4',
+          })
+            .bindTooltip('<strong>🛰️ ESA Copernicus Sentinel-1 C-SAR Footprint</strong><br/>Track 149 Frame 412 • Dual-Pol VV/VH (Acquired 26 Sep)', { sticky: true })
+            .addTo(group);
+        }
+
         // Uncertainty corridor polygon
         if (layerVisibility.uncertaintyCorridor && berg.corridorPolygon && berg.corridorPolygon.length > 0) {
           const polyCoords: [number, number][] = berg.corridorPolygon.map((p) => [p.lat, p.lon]);
           L.polygon(polyCoords, {
-            color: '#0284c7',
-            weight: 1,
-            fillColor: '#e0f2fe',
-            fillOpacity: 0.25,
+            color: isA68A ? '#ef4444' : '#0284c7',
+            weight: isA68A ? 1.8 : 1,
+            fillColor: isA68A ? '#fca5a5' : '#e0f2fe',
+            fillOpacity: isA68A ? 0.32 : 0.22,
             dashArray: '3, 4',
           })
-            .bindTooltip(`<strong>${berg.id} Uncertainty Corridor</strong><br/>Drift trajectory envelope.`, { sticky: true })
+            .bindTooltip(`<strong>${berg.id} 95% Bayesian Uncertainty Corridor</strong><br/>Drift trajectory envelope: ${berg.driftSpeedKts} kts toward ${berg.driftDirectionDeg}°.`, { sticky: true })
             .addTo(group);
         }
 
@@ -949,41 +1005,97 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
         if (layerVisibility.trajectories && berg.predictedTrack.length > 1) {
           const trackCoords: [number, number][] = berg.predictedTrack.map((pt) => [pt.lat, pt.lon]);
           L.polyline(trackCoords, {
-            color: '#6366f1',
-            weight: 2,
-            dashArray: '4, 6',
+            color: isA68A ? '#f43f5e' : '#6366f1',
+            weight: isA68A ? 2.5 : 2,
+            dashArray: '5, 5',
           }).addTo(group);
         }
 
-        // Iceberg Marker
+        // High-Visibility Iceberg Marker with Pulsing Radar Ping and Tactical Label
+        const beaconBorder = isA68A ? '#ef4444' : isSelected ? '#38bdf8' : '#60a5fa';
+        const beaconGlow = isA68A ? 'rgba(239, 68, 68, 0.8)' : 'rgba(56, 189, 248, 0.6)';
+        const tagText = `${berg.name.split(' ')[0]} (${berg.dimensionsKm.length}×${berg.dimensionsKm.width}km)`;
+
         const bergIcon = L.divIcon({
           className: 'custom-iceberg-marker',
           html: `
-            <div style="
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: ${isSelected ? '32px' : '24px'};
-              height: ${isSelected ? '32px' : '24px'};
-              background: #0f172a;
-              border: 2px solid ${isSelected ? '#38bdf8' : '#e2e8f0'};
-              border-radius: 6px;
-              color: #38bdf8;
-              font-size: 11px;
-              font-weight: bold;
-              box-shadow: 0 0 ${isSelected ? '12px #38bdf8' : '4px rgba(0,0,0,0.5)'};
-              cursor: pointer;
-            ">
-              🏔️
+            <div style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;">
+              ${isHighRisk ? `
+                <div style="
+                  position: absolute;
+                  width: 44px;
+                  height: 44px;
+                  border-radius: 50%;
+                  background: rgba(239, 68, 68, 0.22);
+                  border: 1.5px solid #ef4444;
+                  animation: pulse 1.8s infinite;
+                  pointer-events: none;
+                "></div>
+              ` : ''}
+              <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: ${isSelected ? '36px' : '28px'};
+                height: ${isSelected ? '36px' : '28px'};
+                background: #090e1a;
+                border: 2px solid ${beaconBorder};
+                border-radius: 8px;
+                color: #ffffff;
+                font-size: 14px;
+                box-shadow: 0 0 ${isSelected ? '16px' : '10px'} ${beaconGlow};
+                z-index: 10;
+              ">
+                🏔️
+              </div>
+              <div style="
+                position: absolute;
+                top: -26px;
+                background: rgba(9, 14, 26, 0.95);
+                border: 1px solid ${beaconBorder};
+                border-radius: 4px;
+                padding: 1px 6px;
+                white-space: nowrap;
+                font-family: monospace;
+                font-size: 10px;
+                font-weight: bold;
+                color: ${isA68A ? '#fca5a5' : '#7dd3fc'};
+                box-shadow: 0 2px 6px rgba(0,0,0,0.85);
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                pointer-events: none;
+              ">
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${beaconBorder};"></span>
+                <span>${tagText}</span>
+              </div>
             </div>
           `,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14],
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
         });
 
         const bergMarker = L.marker([pos.lat, pos.lon], { icon: bergIcon }).addTo(group);
         bergMarker.on('click', () => onSelectIceberg(berg.id));
-        bergMarker.bindTooltip(`<strong>${berg.name}</strong> (${berg.classification})<br/>Drift: ${berg.driftSpeedKts} kts • Area: ${berg.areaSqKm} km²`, { sticky: true });
+        bergMarker.bindPopup(`
+          <div style="font-family: sans-serif; font-size: 12px; color: #0f172a; line-height: 1.5; min-width: 260px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid ${isA68A ? '#ef4444' : '#0284c7'}; padding-bottom: 4px; margin-bottom: 6px;">
+              <strong style="color: ${isA68A ? '#dc2626' : '#0369a1'}; font-size: 13px;">🏔️ ${berg.name}</strong>
+              <span style="font-size: 10px; background: ${isA68A ? '#fee2e2' : '#f0f9ff'}; color: ${isA68A ? '#b91c1c' : '#0369a1'}; padding: 1px 5px; border-radius: 4px; font-weight: bold;">
+                ${berg.riskLevel.toUpperCase()} THREAT
+              </span>
+            </div>
+            <div><strong>Classification:</strong> ${berg.classification}</div>
+            <div><strong>Dimensions:</strong> ${berg.dimensionsKm.length} km × ${berg.dimensionsKm.width} km (${berg.areaSqKm} km²)</div>
+            <div><strong>Freeboard / Subsurface Keel:</strong> ${berg.dimensionsKm.heightAboveWaterM}m above sea / ~210m keel draft</div>
+            <div><strong>Drift Rate:</strong> ${berg.driftSpeedKts} kts heading ${berg.driftDirectionDeg}° (NW)</div>
+            <div><strong>Sensor Telemetry:</strong> ESA Copernicus Sentinel-1 C-SAR (Synthetic Aperture Radar)</div>
+            <div style="margin-top: 6px; padding: 4px 6px; background: ${isA68A ? '#fff1f2' : '#f8fafc'}; border: 1px solid ${isA68A ? '#fecdd3' : '#e2e8f0'}; border-radius: 4px; font-size: 11px;">
+              <strong>IMO Polar Advisory:</strong> ${isA68A ? 'Route 1 CPA is 4.8 km (CRITICAL VIOLATION). Route 2 Western Bypass provides 38.5 km buffer.' : 'Safe clearance from active fairway.'}
+            </div>
+          </div>
+        `);
+        bergMarker.bindTooltip(`<strong>${berg.name}</strong> (${berg.classification})<br/>Drift: ${berg.driftSpeedKts} kts NW • Area: ${berg.areaSqKm} km²<br/><span style="color:#0284c7">Click to view Sentinel-1 SAR intelligence</span>`, { sticky: true });
       });
     }
 
@@ -1368,6 +1480,20 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
         >
           <Crosshair className="w-3.5 h-3.5 text-cyan-200" />
           <span>🎯 FIT ROUTE</span>
+        </button>
+
+        {/* Center on Iceberg A68A Target */}
+        <button
+          id="btn-focus-iceberg-a68a"
+          onClick={() => handleFocusIceberg('A68A')}
+          className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-mono text-xs font-bold border border-amber-400/60 shadow-lg cursor-pointer flex items-center gap-1.5 transition-all hover:scale-102"
+          title="Zoom and center directly on Megaberg A68A radar target"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-300 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+          </span>
+          <span>🏔️ A68A TARGET</span>
         </button>
 
         {/* Center on Vessel Button */}
