@@ -8,6 +8,18 @@ export type TerrainType =
   | 'DEEP_OCEAN'
   | 'ICEBERG_BUFFER';
 
+/**
+ * SAR Terrain Classification — derived from Sentinel-1 C-band SAR backscatter
+ * signatures used to distinguish land, icebergs, sea-ice, and open water.
+ *
+ * Sentinel-1 SAR classification principles:
+ *  - LAND / GLACIER: Very high backscatter (σ° > -5 dB), stable bright return
+ *  - LARGE ICEBERG: High backscatter (σ° -5 to -10 dB), coherent stable target
+ *  - SEA ICE: Medium-high backscatter (σ° -10 to -18 dB), textured rough surface
+ *  - OPEN WATER: Low backscatter (σ° < -20 dB), specular smooth return
+ */
+export type SarTerrainClass = 'land' | 'large-iceberg' | 'sea-ice' | 'open-water';
+
 export interface GisCell {
   id: string;
   r: number;
@@ -19,6 +31,10 @@ export interface GisCell {
   iceThicknessM: number;    // Sea-ice thickness in meters (0m open ocean, 0.4m leads, 1.5m 1st-yr, 3.5m+ multi-year)
   iceConcentrationPct: number; // Sea-ice concentration 0-100%
   terrainType: TerrainType;
+  /** SAR-derived terrain class from Sentinel-1 C-band backscatter analysis */
+  sarClass: SarTerrainClass;
+  /** SAR backscatter value in dB (simulated from geographic/ice data) */
+  sarBackscatterDb: number;
   name?: string;
   isDynamicHazard?: boolean;
 }
@@ -215,6 +231,8 @@ export function generatePolarGisGrid(rows: number = 42, cols: number = 48): Pola
 
       const cellInfo = classifyGeography(lat, lon);
 
+      const sarInfo = classifySarTerrain(lat, lon, cellInfo.terrainType, cellInfo.iceThicknessM, cellInfo.iceConcentrationPct, !!cellInfo.isDynamicHazard);
+
       const cell: GisCell = {
         id: `gis_${r}_${c}`,
         r,
@@ -226,6 +244,8 @@ export function generatePolarGisGrid(rows: number = 42, cols: number = 48): Pola
         iceThicknessM: cellInfo.iceThicknessM,
         iceConcentrationPct: cellInfo.iceConcentrationPct,
         terrainType: cellInfo.terrainType,
+        sarClass: sarInfo.sarClass,
+        sarBackscatterDb: sarInfo.backscatterDb,
         name: cellInfo.name,
         isDynamicHazard: cellInfo.isDynamicHazard,
       };
@@ -576,6 +596,64 @@ function classifyGeography(lat: number, lon: number): {
 }
 
 // -------------------------------------------------------------
+// SAR TERRAIN CLASSIFIER (Sentinel-1 C-band Backscatter Model)
+// Classifies each grid cell based on simulated SAR backscatter
+// values derived from the geographic/ice terrain characteristics.
+// Real Sentinel-1 data would replace this with actual σ° values.
+// -------------------------------------------------------------
+
+/**
+ * Classify a grid cell's SAR terrain type using simulated Sentinel-1
+ * C-band (5.4 GHz) backscatter signatures.
+ *
+ * Backscatter (σ°) thresholds used:
+ *   Land / Glacier:   σ° > -5 dB   → Very bright, rough volume scatter
+ *   Large Iceberg:    σ° -5 to -12 dB → Bright, coherent smooth face
+ *   Sea Ice (heavy):  σ° -12 to -18 dB → Medium, textured surface
+ *   Open Water:       σ° < -20 dB  → Low, specular mirror reflection
+ */
+export function classifySarTerrain(
+  _lat: number,
+  _lon: number,
+  terrainType: TerrainType,
+  iceThicknessM: number,
+  iceConcentrationPct: number,
+  isDynamicHazard: boolean
+): { sarClass: SarTerrainClass; backscatterDb: number } {
+  // --- LAND / ICE SHELF (permanent glaciated terrain) ---
+  // High-volume backscatter from glacial ice crystals, σ° typically -3 to +2 dB
+  if (terrainType === 'LAND_GLACIER' || terrainType === 'ICE_SHELF') {
+    const backscatterDb = -3.5 + (Math.random() * 2.0 - 1.0); // -4.5 to -2.5 dB
+    return { sarClass: 'land', backscatterDb: Math.round(backscatterDb * 10) / 10 };
+  }
+
+  // --- LARGE ICEBERG (A68A megaberg or drift buffer) ---
+  // Icebergs have distinctive bright SAR return due to above-water mass,
+  // tabular geometry creates strong specular facets, σ° typically -7 to -4 dB
+  if (terrainType === 'ICEBERG_BUFFER' || isDynamicHazard) {
+    const backscatterDb = -6.5 + (Math.random() * 3.0 - 1.5); // -8 to -5 dB
+    return { sarClass: 'large-iceberg', backscatterDb: Math.round(backscatterDb * 10) / 10 };
+  }
+
+  // --- HEAVY SEA ICE (concentration > 40%, thickness > 1.2m) ---
+  // Multi-year ice and pressure ridges give σ° ~ -12 to -15 dB
+  // First-year ice gives σ° ~ -15 to -18 dB
+  if (iceConcentrationPct > 40 || iceThicknessM > 1.2) {
+    const baseDb = iceThicknessM > 2.0 ? -12.5 : -15.5; // older/thicker = brighter
+    const backscatterDb = baseDb + (Math.random() * 3.0 - 1.5);
+    return { sarClass: 'sea-ice', backscatterDb: Math.round(backscatterDb * 10) / 10 };
+  }
+
+  // --- LIGHT SEA ICE / OPEN WATER (leads, low concentration) ---
+  // Open water in calm conditions: σ° ~ -22 to -26 dB (specular)
+  // Rough open water (wind >5m/s): σ° ~ -16 to -20 dB
+  const openWaterDb = iceConcentrationPct < 10
+    ? -23.0 + (Math.random() * 3.0 - 1.5)  // very open: -24.5 to -21.5
+    : -18.0 + (Math.random() * 3.0 - 1.5); // light ice: -19.5 to -16.5
+  return { sarClass: 'open-water', backscatterDb: Math.round(openWaterDb * 10) / 10 };
+}
+
+// -------------------------------------------------------------
 // A* (A-STAR) PATHFINDING SEARCH ALGORITHM
 // -------------------------------------------------------------
 
@@ -801,14 +879,26 @@ export function runAStarOnGisGrid(
         continue;
       }
 
+      // SAR-informed hard blocks: never route through land or large icebergs detected by SAR
+      if (neighbor.sarClass === 'land') {
+        continue; // Absolute block – glaciated terrain detected by SAR high backscatter
+      }
+      if (avoidIcebergs && neighbor.sarClass === 'large-iceberg') {
+        continue; // Block large iceberg cells detected via SAR backscatter signature
+      }
+
       // Cost calculation
       const stepDistKm = haversineKm(current, neighbor);
-      // Ice penalty
+      // Ice penalty (scaled by thickness)
       const icePenalty = neighbor.iceThicknessM * iceWeight;
       // Shallow water caution penalty
       const depthPenalty = neighbor.depthM < 25 ? 4.0 : 0.0;
+      // SAR-derived sea-ice concentration penalty (heavy ice = high cost)
+      const sarIcePenalty = neighbor.sarClass === 'sea-ice'
+        ? (neighbor.iceConcentrationPct / 100) * iceWeight * 0.8  // scaled sea-ice cost
+        : 0.0;
 
-      const tentativeG = gScore[current.r][current.c] + stepDistKm + icePenalty + depthPenalty;
+      const tentativeG = gScore[current.r][current.c] + stepDistKm + icePenalty + depthPenalty + sarIcePenalty;
 
       if (tentativeG < gScore[nr][nc]) {
         parent[nr][nc] = current;

@@ -54,6 +54,10 @@ const PAGE_TITLES: Record<NavPage, { title: string; subtitle: string }> = {
     title: 'Fleet & Iceberg Gallery',
     subtitle: 'High-resolution optical profiles and technical specifications',
   },
+  'astar-gis': {
+    title: 'A* GIS Pathfinder Studio',
+    subtitle: 'SAR-aware A* spatial pathfinding across Antarctic GIS grid',
+  },
 };
 
 export const TopHeader: React.FC<TopHeaderProps> = ({

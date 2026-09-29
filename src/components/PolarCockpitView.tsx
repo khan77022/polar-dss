@@ -38,6 +38,7 @@ import {
   Minimize2,
   MapPin,
   Flame,
+  Zap,
 } from 'lucide-react';
 import { AntarcticMap } from './AntarcticMap';
 import { NavigationBar } from './NavigationBar';
@@ -135,7 +136,7 @@ export const PolarCockpitView: React.FC = () => {
     escapeability: true,
     stations: true,
     aheadVessels: true,
-    gisGrid: true, // Default enabled for instant GIS array visualization
+    gisGrid: false, // Hidden by default — user can toggle via Settings panel
   });
 
   // GIS Grid & A* Pathfinder State
@@ -143,6 +144,9 @@ export const PolarCockpitView: React.FC = () => {
   const [aStarResult, setAStarResult] = useState<AStarSearchResult | null>(null);
   const [compareAStarResult, setCompareAStarResult] = useState<AStarSearchResult | null>(null);
   const [isAStarStudioOpen, setIsAStarStudioOpen] = useState<boolean>(false);
+
+  // Manual ship position override (from move-ship map click)
+  const [manualShipPos, setManualShipPos] = useState<{ lat: number; lon: number } | null>(null);
 
   // Auto-solve default A* routes on mount
   useEffect(() => {
@@ -156,6 +160,48 @@ export const PolarCockpitView: React.FC = () => {
     setAStarResult(primary);
     setCompareAStarResult(comparison);
   }, [gisGrid]);
+
+  /**
+   * Handle ship repositioning via map click.
+   * Updates the vessel position and immediately re-runs A* from the new location
+   * to the existing destination using SAR-aware pathfinding.
+   */
+  const handleShipMove = (newPos: { lat: number; lon: number }) => {
+    setManualShipPos(newPos);
+    setVessel((prev) => ({ ...prev, currentPos: newPos }));
+    showToast(`📍 Ship repositioned to ${Math.abs(newPos.lat).toFixed(2)}°S, ${Math.abs(newPos.lon).toFixed(2)}°W — Re-running A* route...`);
+
+    // Re-run A* from the new ship position to the same destination
+    setTimeout(() => {
+      const destination = { lat: -67.57, lon: -68.12 }; // Rothera (default destination)
+      const heavyShip = PRESET_VESSEL_PROFILES[2];
+      const smallShip = PRESET_VESSEL_PROFILES[0];
+      const primary = runAStarOnGisGrid(gisGrid, newPos, destination, heavyShip, { avoidIcebergs: true });
+      const comparison = runAStarOnGisGrid(gisGrid, newPos, destination, smallShip, { avoidIcebergs: true });
+      setAStarResult(primary);
+      setCompareAStarResult(comparison);
+      if (primary.success) {
+        // Auto-commit the new A* route
+        const newRoute: RouteOption = {
+          id: 'route-astar-optimal',
+          name: `A* SAR-Aware Track (from new position)`,
+          distanceKm: primary.distanceKm,
+          timeHours: primary.timeHours,
+          fuelLiters: primary.fuelLiters,
+          iceRisk: primary.iceRisk,
+          icebergRisk: 'Low',
+          recommendedFor: 'SAR-aware avoidance',
+          waypoints: primary.path,
+          objective: 'balanced',
+        };
+        setCustomAStarRouteOption(newRoute);
+        setSelectedRouteId('route-astar-optimal');
+        showToast(`✓ A* SAR Route from new position: ${primary.distanceKm} km (${primary.timeHours} hrs)`);
+      } else {
+        showToast(`⚠️ A* could not find a clear route from this position. Try moving to open water.`);
+      }
+    }, 100);
+  };
 
   const handleToggleLayer = (layerKey: keyof LayerVisibilityState) => {
     setLayerVisibility((prev) => ({
@@ -267,20 +313,13 @@ export const PolarCockpitView: React.FC = () => {
         id: 'route-astar-optimal',
         name: `A* Optimal Track (${result.vesselUsed.name.split(' ')[0]})`,
         distanceKm: result.distanceKm,
-        transitTimeHours: result.timeHours,
-        fuelBurnLiters: result.fuelLiters,
+        timeHours: result.timeHours,
+        fuelLiters: result.fuelLiters,
         iceRisk: result.iceRisk,
-        waypoints: result.path.map((p, idx) => ({
-          lat: p.lat,
-          lon: p.lon,
-          name: idx === 0 ? 'A* Departure Fairway' : idx === result.path.length - 1 ? 'A* Destination Wharf' : `A* WP-0${idx}`,
-          iceThicknessM: 0.4,
-          speedKts: result.vesselUsed.cruisingSpeedKts,
-        })),
-        avoidanceConfidencePct: 99.8,
-        cpaToIcebergKm: 41.5,
+        icebergRisk: 'Low',
+        waypoints: result.path,
+        recommendedFor: `Parametric A* evaluated over ${result.gridPath.length} GIS cells. SAR-aware avoidance of land & large icebergs.`,
         objective: 'balanced',
-        description: `Parametric A* route evaluated over ${result.gridPath.length} GIS spatial cells. 100% deep water clearance guaranteed.`,
       };
       setCustomAStarRouteOption(newRoute);
       setSelectedRouteId('route-astar-optimal');
@@ -1311,11 +1350,12 @@ export const PolarCockpitView: React.FC = () => {
                     showSimControls={true}
                     focusTrigger={routeFocusTrigger}
                     focusIcebergTrigger={icebergFocusTrigger}
-                    layerVisibility={{ ...layerVisibility, gisGrid: true }}
+                    layerVisibility={{ ...layerVisibility, gisGrid: layerVisibility.gisGrid }}
                     onToggleLayer={handleToggleLayer}
                     aStarResult={aStarResult}
                     compareAStarResult={compareAStarResult}
                     onOpenAStarStudio={() => setIsAStarStudioOpen(true)}
+                    onShipMove={handleShipMove}
                   />
                 </div>
               </div>

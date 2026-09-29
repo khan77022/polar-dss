@@ -75,6 +75,8 @@ export interface AntarcticMapProps {
   aStarResult?: AStarSearchResult | null;
   compareAStarResult?: AStarSearchResult | null;
   onOpenAStarStudio?: () => void;
+  /** Called when user repositions the ship by clicking the map in move-ship mode */
+  onShipMove?: (newPos: { lat: number; lon: number }) => void;
 }
 
 type BasemapType = 'satellite' | 'ocean' | 'chart';
@@ -143,6 +145,7 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
   aStarResult,
   compareAStarResult,
   onOpenAStarStudio,
+  onShipMove,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -172,10 +175,31 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
     escapeability: true,
     stations: true,
     aheadVessels: true,
-    gisGrid: true, // Show 2D Raster GIS System Grid Array
+    gisGrid: false, // Hidden by default — toggle via Settings to inspect GIS array
   });
 
   const layerVisibility = propLayerVisibility ?? internalLayerVisibility;
+
+  // Move-Ship mode: clicking map repositions the vessel
+  const [isMoveShipMode, setIsMoveShipMode] = useState<boolean>(false);
+  const isMoveShipModeRef = useRef<boolean>(false);
+  useEffect(() => { isMoveShipModeRef.current = isMoveShipMode; }, [isMoveShipMode]);
+  const onShipMoveRef = useRef(onShipMove);
+  useEffect(() => { onShipMoveRef.current = onShipMove; }, [onShipMove]);
+
+  // Attach/detach map click listener for move-ship mode
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    const handler = (e: L.LeafletMouseEvent) => {
+      if (!isMoveShipModeRef.current) return;
+      const newPos = { lat: e.latlng.lat, lon: e.latlng.lng };
+      if (onShipMoveRef.current) onShipMoveRef.current(newPos);
+      setIsMoveShipMode(false); // auto-exit move mode after one click
+    };
+    map.on('click', handler);
+    return () => { map.off('click', handler); };
+  }, [mapInstanceRef.current]); // re-attach if map re-initializes
 
   // Close three-dot menu when clicking outside
   useEffect(() => {
@@ -1485,6 +1509,15 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
           weight = 0.5;
         }
 
+        // SAR overlay: tint cells based on SAR classification from Sentinel-1 C-band
+        if (cell.sarClass === 'land') {
+          fillColor = '#7f1d1d'; fillOpacity = 0.42; strokeColor = '#dc2626';
+        } else if (cell.sarClass === 'large-iceberg') {
+          fillColor = '#7c2d12'; fillOpacity = 0.40; strokeColor = '#fb923c';
+        } else if (cell.sarClass === 'sea-ice' && fillOpacity < 0.30) {
+          fillColor = '#164e63'; fillOpacity = 0.28;
+        }
+
         const bounds: [[number, number], [number, number]] = [
           [cell.lat - halfDLat, cell.lon - halfDLon],
           [cell.lat + halfDLat, cell.lon + halfDLon],
@@ -1518,6 +1551,13 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
               <div>📊 <strong>Water Depth:</strong> <strong style="color: ${cell.depthM > 15 ? '#0284c7' : cell.depthM > 0 ? '#d97706' : '#dc2626'}">${cell.depthM} m</strong></div>
               <div>📏 <strong>Fairway Width:</strong> ${cell.passageWidthM >= 1000 ? (cell.passageWidthM / 1000).toFixed(1) + ' km' : cell.passageWidthM + ' m'}</div>
               <div>❄️ <strong>Sea-Ice Thickness:</strong> ${cell.iceThicknessM} m (${cell.iceConcentrationPct}% conc)</div>
+              <div style="margin-top:3px; padding-top:2px; border-top:1px dashed #cbd5e1;">
+                📡 <strong>SAR Class:</strong>
+                <span style="color: ${cell.sarClass === 'land' ? '#ef4444' : cell.sarClass === 'large-iceberg' ? '#fb923c' : cell.sarClass === 'sea-ice' ? '#38bdf8' : '#34d399'}; font-weight:bold;">
+                  ${cell.sarClass === 'land' ? '🏔️ LAND/GLACIER' : cell.sarClass === 'large-iceberg' ? '🧊 LARGE ICEBERG' : cell.sarClass === 'sea-ice' ? '❄️ SEA ICE' : '🌊 OPEN WATER'}
+                </span>
+                <span style="color:#94a3b8; font-size:10px;"> (σ°: ${cell.sarBackscatterDb} dB)</span>
+              </div>
             </div>
 
             <div style="padding-top: 3px; border-top: 1px dashed #cbd5e1; font-size: 10px;">
@@ -1657,7 +1697,17 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
           ? 'fixed inset-0 z-50 w-screen h-screen bg-slate-950 rounded-none border-none p-0 m-0'
           : 'relative w-full h-full min-h-[480px] bg-slate-900 overflow-hidden rounded-md border border-slate-200 shadow-xs'
       } select-none ${className}`}
+      style={isMoveShipMode ? { cursor: 'crosshair' } : undefined}
     >
+      {/* Move-Ship mode overlay banner */}
+      {isMoveShipMode && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-bounce">
+          <div className="bg-amber-500/95 backdrop-blur-md text-slate-950 font-mono font-bold text-xs px-4 py-2 rounded-full shadow-2xl border border-amber-300 flex items-center gap-2">
+            <MapPin className="w-3.5 h-3.5" />
+            <span>📍 MOVE SHIP MODE — Click map to reposition vessel</span>
+          </div>
+        </div>
+      )}
       {/* 1. TOP-LEFT: Clean Sector Badge (Safely offset so left sidebar toggle button is NEVER overlapped) */}
       <div className="absolute top-3 left-3 z-20 pointer-events-none max-w-xs sm:max-w-sm">
         <div className="bg-[#0b1424]/90 backdrop-blur-md border border-cyan-800/60 text-white rounded-lg px-3 py-2 shadow-lg">
@@ -1757,6 +1807,23 @@ export const AntarcticMap: React.FC<AntarcticMapProps> = ({
           >
             <Zap className="w-3.5 h-3.5 text-emerald-200 fill-current" />
             <span>⚡ A* STUDIO</span>
+          </button>
+        )}
+
+        {/* Move Ship Button */}
+        {onShipMove && (
+          <button
+            id="btn-move-ship"
+            onClick={() => setIsMoveShipMode((prev) => !prev)}
+            title={isMoveShipMode ? 'Click anywhere on the map to drop ship there. Click again to cancel.' : 'Click to enter move-ship mode, then click map to reposition vessel'}
+            className={`px-2.5 py-1.5 rounded-lg font-mono text-xs font-bold border shadow-lg cursor-pointer flex items-center gap-1.5 transition-all hover:scale-102 ${
+              isMoveShipMode
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-400/80 text-white animate-pulse'
+                : 'bg-[#0b1424]/90 hover:bg-amber-950 border-amber-700/60 text-amber-300 hover:text-amber-100'
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            <span>{isMoveShipMode ? '📍 CLICK MAP TO MOVE' : '📍 MOVE SHIP'}</span>
           </button>
         )}
 
